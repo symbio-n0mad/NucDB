@@ -1,0 +1,15 @@
+{"format": "nucdb/quantities", "schema_version": "1.1.0",
+ "records": [
+{"description": "Natürliche Isotopenhäufigkeit (Atomprozent)", "dtype": "real", "quantity": "abundance_percent", "unit": "%"},
+{"description": "Bindungsenergie pro Nukleon", "dtype": "real", "quantity": "binding_energy_per_nucleon_kev", "unit": "keV"},
+{"description": "Halbwertszeit", "dtype": "real", "quantity": "half_life_s", "unit": "s"},
+{"description": "Anregungsenergie (Isomere)", "dtype": "real", "quantity": "level_energy_kev", "unit": "keV"},
+{"description": "Massenexzess (M − A·u)·c²", "dtype": "real", "quantity": "mass_excess_kev", "unit": "keV"},
+{"description": "Atommasse (inkl. Elektronen)", "dtype": "real", "quantity": "mass_u", "unit": "u"},
+{"description": "Q-Wert des α-Zerfalls", "dtype": "real", "quantity": "q_alpha_kev", "unit": "keV"},
+{"description": "Q-Wert des β⁻-Zerfalls", "dtype": "real", "quantity": "q_beta_minus_kev", "unit": "keV"},
+{"description": "Q-Wert des Elektroneneinfangs", "dtype": "real", "quantity": "q_ec_kev", "unit": "keV"},
+{"description": "Resonanzintegral für Neutroneneinfang", "dtype": "real", "quantity": "resonance_integral_b", "unit": "b"},
+{"description": "Thermischer Neutroneneinfangquerschnitt (2200 m/s)", "dtype": "real", "quantity": "sigma_capture_b", "unit": "b"},
+{"description": "Spin und Parität, z. B. '5+'", "dtype": "text", "quantity": "spin_parity", "unit": ""}
+]}

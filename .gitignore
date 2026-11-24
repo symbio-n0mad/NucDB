@@ -1,0 +1,23 @@
+# Rohdaten: PGAA-Excel (Weitergabe ungeklärt) und Nuklidkarte (nicht verwenden) bleiben lokal
+db-source/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Nebenprojekte (nicht Teil von NucDB)
+nebenprojekte/
+
+# Lokale Datenbank mit nicht weitergebbaren Quellen (z. B. PGAA-Excel)
+db-local/

@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NucDB – Dokumentation</title><style>
+:root { --bg:#ffffff; --fg:#1d1d1f; --muted:#5f6368; --line:#d9dce1; --code:#f3f4f6; --accent:#0b57d0; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#16181c; --fg:#e8eaed; --muted:#9aa0a6; --line:#3c4043; --code:#23262b; --accent:#8ab4f8; }
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+       font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wrap { display:flex; gap:2rem; max-width:1200px; margin:0 auto; padding:1.5rem 1rem 4rem; }
+nav { flex:0 0 260px; position:sticky; top:1rem; align-self:flex-start; max-height:calc(100vh - 2rem);
+      overflow:auto; font-size:.9rem; }
+nav a { color:var(--muted); text-decoration:none; } nav a:hover { color:var(--accent); }
+nav ul { list-style:none; padding-left:.8rem; margin:.2rem 0; } nav > ul { padding-left:0; }
+nav .pages a { font-weight:600; color:var(--fg); }
+main { flex:1; min-width:0; }
+h1 { font-size:1.9rem; margin-top:0; } h2 { border-bottom:1px solid var(--line); padding-bottom:.3rem; margin-top:2.2rem; }
+a { color:var(--accent); }
+code { background:var(--code); padding:.1em .35em; border-radius:4px; font-size:.9em; }
+pre { background:var(--code); padding:.9rem 1rem; border-radius:8px; overflow:auto; }
+pre code { background:none; padding:0; }
+table { border-collapse:collapse; display:block; overflow-x:auto; margin:1rem 0; }
+th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+th { background:var(--code); }
+blockquote { margin:1rem 0; padding:.6rem 1rem; border-left:4px solid var(--accent); background:var(--code); border-radius:0 6px 6px 0; }
+footer { color:var(--muted); font-size:.85rem; margin-top:3rem; }
+@media (max-width: 860px) { .wrap { display:block; } nav { position:static; max-height:none; margin-bottom:1.5rem; } }
+</style></head>
+<body><div class="wrap"><nav><ul class="pages"><li><a href="spezifikation.html">Spezifikation</a></li><li><a href="integration.html">Einbindung in die Tools</a></li></ul><hr><div class="toc">
+<ul>
+<li><a href="#1-uberblick">1. Überblick</a></li>
+<li><a href="#2-fundort-der-datenbank">2. Fundort der Datenbank</a></li>
+<li><a href="#3-konventionen">3. Konventionen</a><ul>
+<li><a href="#31-einheiten-fest-im-feldnamen-erkennbar">3.1 Einheiten (fest, im Feldnamen erkennbar)</a></li>
+<li><a href="#32-unsicherheiten-und-kennzeichen">3.2 Unsicherheiten und Kennzeichen</a></li>
+<li><a href="#33-nuklidnamen">3.3 Nuklidnamen</a></li>
+<li><a href="#34-dateiaufbau">3.4 Dateiaufbau</a></li>
+</ul>
+</li>
+<li><a href="#4-dateien">4. Dateien</a><ul>
+<li><a href="#41-manifestjson">4.1 manifest.json</a></li>
+<li><a href="#42-sourcesjson">4.2 sources.json</a></li>
+<li><a href="#43-quantitiesjson">4.3 quantities.json</a></li>
+<li><a href="#44-elementsjson">4.4 elements.json</a></li>
+<li><a href="#45-nuclidesjson">4.5 nuclides.json</a></li>
+<li><a href="#46-decay_modesjson">4.6 decay_modes.json</a></li>
+<li><a href="#46a-isomer_feedingjson">4.6a isomer_feeding.json</a></li>
+<li><a href="#47-zerfallsstrahlung-decay_json">4.7 Zerfallsstrahlung (decay_*.json)</a></li>
+<li><a href="#48-special_linesjson">4.8 special_lines.json</a></li>
+<li><a href="#49-prompt_gammajson-getrennt">4.9 prompt_gamma.json (getrennt)</a></li>
+<li><a href="#410-activation_gammajson-naa">4.10 activation_gamma.json (NAA)</a></li>
+<li><a href="#411-changelogjson">4.11 changelog.json</a></li>
+<li><a href="#412-lokale-datenbanken-und-nicht-weitergebbare-quellen">4.12 Lokale Datenbanken und nicht weitergebbare Quellen</a></li>
+</ul>
+</li>
+<li><a href="#5-regeln-fur-konsumenten">5. Regeln für Konsumenten</a><ul>
+<li><a href="#peak-identifikation-find_gammas">Peak-Identifikation (find_gammas)</a></li>
+</ul>
+</li>
+<li><a href="#6-abgeleitete-groen">6. Abgeleitete Größen</a></li>
+<li><a href="#6a-einheiten-umrechnen-eingeben-und-anzeigen">6a. Einheiten umrechnen, eingeben und anzeigen</a><ul>
+<li><a href="#festgelegte-definitionen">Festgelegte Definitionen</a></li>
+<li><a href="#unterstutzte-einheiten-erweiterbar">Unterstützte Einheiten (erweiterbar)</a></li>
+<li><a href="#funktionen">Funktionen</a></li>
+</ul>
+</li>
+<li><a href="#7-versionsregeln">7. Versionsregeln</a></li>
+<li><a href="#8-erganzungsdatenbank-overlay-fur-eigene-nutzereintrage">8. Ergänzungsdatenbank (Overlay) für eigene Nutzereinträge</a></li>
+<li><a href="#9-python-lese-api-paket-nucdb">9. Python-Lese-API (Paket nucdb)</a></li>
+<li><a href="#10-was-version-10-zusichert">10. Was Version 1.0 zusichert</a></li>
+<li><a href="#11-versionshistorie">11. Versionshistorie</a></li>
+</ul>
+</div>
+</nav>
+<main><h1 id="nucdb-spezifikation-der-nukliddatenbank">NucDB – Spezifikation der Nukliddatenbank</h1>
+<p><strong>Version der Spezifikation: 1.1</strong> · Stand 2026-11-24 · umgesetzt in <code>nucdb</code> 1.1
+Projekt: NucDB (<code>github.com/symbio-n0mad/NucDB</code>) · Daten: CC BY 4.0 · Code: GPL-3.0-or-later</p>
+<p>Dieses Dokument richtet sich an <strong>Konsumenten</strong> der Datenbank: plotSPE, plotRDE/radonlab,
+ActivityPartitioner, das geplante LSC-Tool und NucOffice. Es kann in diesen Projekten direkt als
+Umsetzungsvorgabe eingelesen werden. Es beschreibt das Format vollständig, sodass ein Tool die
+Dateien auch ohne das Paket <code>nucdb</code> lesen kann.</p>
+<blockquote>
+<p><strong>Stand 1.0:</strong> Format und Lese-API sind festgelegt (Zusagen in Abschnitt 10). Innerhalb von 1.x
+kommt nur Neues hinzu, nichts wird umbenannt oder entfernt. Was ein Tool konkret ändern muss, um
+NucDB zu nutzen, steht in <a href="integration.html"><code>NUCDB-INTEGRATION.md</code></a>.</p>
+</blockquote>
+<hr />
+<h2 id="1-uberblick">1. Überblick</h2>
+<ul>
+<li>Die Datenbank ist ein <strong>Ordner mit JSON-Dateien</strong> (UTF-8). Es gibt kein Binärformat.
+  Jede Datei lässt sich mit einem Texteditor lesen und notfalls bearbeiten.</li>
+<li><strong>Eine Datei pro Datenart.</strong> Ein Tool lädt nur, was es braucht. Prompt-Gammas liegen in einer
+  <strong>eigenen Datei</strong> und werden nie zusammen mit Zerfallslinien geladen.</li>
+<li>Jeder Wert und jede Linie nennt seine <strong>Quelle</strong>.</li>
+<li>Eine <strong>umfangreiche Offline-Datenbank wird mitgeliefert</strong>: alle 4454 Nuklide aus NUBASE2020 mit
+  Massen (AME2020), Halbwertszeiten und Zerfallsarten sowie Zerfallsstrahlung (DDEP, wo evaluiert,
+  vollständig; sonst ENSDF ab 0,1 % Intensität).</li>
+<li>Eigene Einträge der Nutzer liegen in einer <strong>Ergänzungsdatenbank</strong> (Overlay, Abschnitt 8).
+  Sie gilt für alle Tools gemeinsam. Die zentrale Datenbank bleibt dabei unverändert.</li>
+</ul>
+<h2 id="2-fundort-der-datenbank">2. Fundort der Datenbank</h2>
+<p>Die Lese-API sucht in dieser Reihenfolge und nimmt den ersten Treffer:</p>
+<ol>
+<li>den Pfad, den das Tool ausdrücklich übergibt (z. B. aus seinen Einstellungen),</li>
+<li>den gemeinsamen NucOffice-Datenordner <code>&lt;NucOffice-Daten&gt;/data/nucdb/</code>
+   - Linux: <code>~/.local/share/nucoffice/data/nucdb/</code>, systemweit <code>/opt/nucoffice/data/nucdb/</code>
+   - Windows: <code>%LOCALAPPDATA%\NucOffice\data\nucdb\</code>, systemweit <code>%ProgramFiles%\NucOffice\data\nucdb\</code></li>
+<li>die Momentaufnahme im Paket <code>nucdb</code> (<code>nucdb/data/</code>). Sie funktioniert auch ohne NucOffice und
+   in PyInstaller-Builds.</li>
+</ol>
+<p>Liegen mehrere Datenbanken vor, gewinnt nicht automatisch die neueste. Es gilt die Reihenfolge
+oben. Die API meldet, welche Datenbank sie geladen hat (<code>db.location</code>, <code>db.data_version</code>).
+Es gibt <strong>keine Umgebungsvariable</strong>.</p>
+<p><strong>Verteilung:</strong> Jedes Tool, das das Paket <code>nucdb</code> als Abhängigkeit hat, bringt die Momentaufnahme
+(2.3) automatisch mit und funktioniert damit sofort. NucOffice <em>kann</em> zusätzlich eine neuere Datenbank
+in den gemeinsamen Datenordner (2.2) legen; dann nutzen alle Tools diese, ohne neu installiert zu
+werden. Beides ist mit dieser Reihenfolge abgedeckt.</p>
+<h2 id="3-konventionen">3. Konventionen</h2>
+<h3 id="31-einheiten-fest-im-feldnamen-erkennbar">3.1 Einheiten (fest, im Feldnamen erkennbar)</h3>
+<table>
+<thead>
+<tr>
+<th>Größe</th>
+<th>Einheit</th>
+<th>Feldnamen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Energie</td>
+<td>keV</td>
+<td><code>*_kev</code></td>
+</tr>
+<tr>
+<td>Zeit, Halbwertszeit</td>
+<td>s</td>
+<td><code>*_s</code></td>
+</tr>
+<tr>
+<td>Masse</td>
+<td>u, <strong>Atom</strong>masse (inkl. Elektronen)</td>
+<td><code>*_u</code></td>
+</tr>
+<tr>
+<td>Massenexzess, Q-Wert, Bindungsenergie</td>
+<td>keV</td>
+<td><code>*_kev</code></td>
+</tr>
+<tr>
+<td>Wirkungsquerschnitt</td>
+<td>barn</td>
+<td><code>*_b</code></td>
+</tr>
+<tr>
+<td>Isotopenhäufigkeit</td>
+<td>% (Atomprozent)</td>
+<td><code>*_percent</code></td>
+</tr>
+<tr>
+<td>Intensität, Verzweigung</td>
+<td><strong>Bruchteil 0…1</strong></td>
+<td><code>intensity</code>, <code>branching</code></td>
+</tr>
+</tbody>
+</table>
+<p>Intensitäten gelten immer <strong>pro Zerfall des genannten Nuklids</strong>. Die Verzweigung innerhalb einer
+Kette ist nicht eingerechnet. Ein Beispiel: Tl-208 wird nur in rund 36 % der Zerfälle der
+Th-232-Kette gebildet, das steckt nicht in seinen Linienintensitäten.</p>
+<h3 id="32-unsicherheiten-und-kennzeichen">3.2 Unsicherheiten und Kennzeichen</h3>
+<p>In flachen Datensätzen (Linien, Zerfallsarten) heißen die Begleitfelder <code>&lt;feld&gt;_unc</code>,
+<code>&lt;feld&gt;_flag</code> und <code>&lt;feld&gt;_text</code> (z. B. <code>branching_unc</code>, <code>branching_flag</code>). In den Wertobjekten von
+<code>nuclides.json</code> (4.5) heißen sie kurz <code>unc</code>, <code>flag</code> und <code>text</code>.</p>
+<ul>
+<li><code>&lt;feld&gt;_unc</code>: Standardunsicherheit 1σ, absolut, in der Einheit des Feldes.
+  <code>null</code> heißt „unbekannt“.</li>
+<li><code>&lt;feld&gt;_flag</code>, optional:</li>
+<li><code>"&lt;"</code> oder <code>"&gt;"</code>: Ober- bzw. Untergrenze</li>
+<li><code>"~"</code>: Abschätzung</li>
+<li><code>"sys"</code>: aus Systematik abgeleitet</li>
+<li><code>"?"</code>: unsicher zugeordnet</li>
+<li><code>&lt;feld&gt;_text</code>, optional: die Originalschreibweise der Quelle, z. B. <code>"5.2714(5) y"</code>.</li>
+</ul>
+<h3 id="33-nuklidnamen">3.3 Nuklidnamen</h3>
+<ul>
+<li>Eindeutiger Schlüssel ist <code>(z, a, isomer)</code>.
+  <code>isomer</code> ist 0 für den Grundzustand, 1 für m, 2 für m2 usw.</li>
+<li>Der kanonische Name lautet <code>&lt;Symbol&gt;-&lt;A&gt;[m[n]]</code>, z. B. <code>Co-60</code>, <code>Tc-99m</code>, <code>Hf-178m2</code>.
+  Er ist <strong>der Verweis zwischen allen Dateien</strong>. Es gibt keine numerischen IDs.</li>
+<li>Die Lese-API akzeptiert auch <code>60Co</code>, <code>Co60</code>, <code>60-Co</code>, <code>CO-60</code> und <code>co 60</code>.</li>
+<li><strong>Isomere:</strong> Als eigenes Nuklid gilt ein angeregter Zustand mit T½ ≥ 1 ms (oder ein stabiler,
+  z. B. Ta-180m). Diese Zustände werden nach Anregungsenergie durchgezählt: <code>m</code>, <code>m2</code>, <code>m3</code> …
+  Das ergibt die gebräuchlichen Namen: Ag-110m = 250 d, Lu-177m = 160 d, Kr-83m = 1,8 h,
+  Ir-192m2 = 241 a. NUBASE zählt auch kürzere Zustände (ns, µs) mit; sein Buchstabe steht im
+  Feld <code>nubase_state</code> (z. B. Ag-110m: <code>"n"</code>).</li>
+</ul>
+<h3 id="34-dateiaufbau">3.4 Dateiaufbau</h3>
+<p>Jede Datei hat diesen Aufbau:</p>
+<pre><code class="language-json">{&quot;format&quot;: &quot;nucdb/&lt;dateiname&gt;&quot;, &quot;schema_version&quot;: &quot;1.1.0&quot;,
+ &quot;records&quot;: [
+{&quot;...&quot;: &quot;ein Datensatz pro Zeile&quot;},
+{&quot;...&quot;: &quot;...&quot;}
+]}
+</code></pre>
+<ul>
+<li>Datensätze sind sortiert: Nuklide nach (z, a, isomer), Linien nach (Nuklid, Energie).</li>
+<li>Innerhalb eines Datensatzes sind die Schlüssel sortiert. <code>null</code>-Felder werden weggelassen,
+  ein fehlendes Feld bedeutet also <code>null</code>.</li>
+<li>Der Editor schreibt immer genau diese Form. Dadurch zeigt git nur echte Änderungen an.</li>
+</ul>
+<h2 id="4-dateien">4. Dateien</h2>
+<table>
+<thead>
+<tr>
+<th>Datei</th>
+<th>Inhalt</th>
+<th>Laden</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>manifest.json</code></td>
+<td>Versionen, Dateiliste mit SHA-256, Importparameter</td>
+<td>immer</td>
+</tr>
+<tr>
+<td><code>sources.json</code></td>
+<td>Quellen</td>
+<td>immer</td>
+</tr>
+<tr>
+<td><code>quantities.json</code></td>
+<td>Liste der skalaren Größen (Erweiterungspunkt)</td>
+<td>immer</td>
+</tr>
+<tr>
+<td><code>elements.json</code></td>
+<td>Elemente</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>nuclides.json</code></td>
+<td>Nuklide mit skalaren Werten</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>decay_modes.json</code></td>
+<td>Zerfallsarten, Mutter → Tochter</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>isomer_feeding.json</code></td>
+<td>Anteil der Zerfälle, der in einem Tochter-Isomer landet (Mo-99 → Tc-99m)</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>decay_gamma.json</code></td>
+<td>Gamma- und Röntgenlinien, Annihilation</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>decay_alpha.json</code></td>
+<td>Alpha-Linien</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>decay_beta.json</code></td>
+<td>Beta⁻- und Beta⁺-Zweige (E_max, E_mittel)</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>decay_electron.json</code></td>
+<td>Konversions- und Auger-Elektronen</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><code>special_lines.json</code></td>
+<td>Linien, die zu keinem Nuklid gehören (511, 1022 keV …)</td>
+<td>bei Bedarf</td>
+</tr>
+<tr>
+<td><strong><code>prompt_gamma.json</code></strong></td>
+<td><strong>Prompt-Gammas nach (n,γ), getrennt von allem anderen</strong></td>
+<td>nur ausdrücklich</td>
+</tr>
+<tr>
+<td><code>activation_gamma.json</code></td>
+<td>Linien von Aktivierungsprodukten mit σγ und k0 (NAA), bezogen auf das Target</td>
+<td>nur ausdrücklich</td>
+</tr>
+<tr>
+<td><code>changelog.json</code></td>
+<td>Änderungsprotokoll</td>
+<td>nur Editor</td>
+</tr>
+</tbody>
+</table>
+<h3 id="41-manifestjson">4.1 <code>manifest.json</code></h3>
+<pre><code class="language-json">{&quot;format&quot;: &quot;nucdb/manifest&quot;, &quot;schema_version&quot;: &quot;1.1.0&quot;, &quot;data_version&quot;: &quot;2026.11.0&quot;,
+ &quot;created_at&quot;: &quot;2026-11-20T12:00:00Z&quot;, &quot;license&quot;: &quot;CC-BY-4.0&quot;,
+ &quot;import&quot;: {&quot;min_intensity&quot;: 0.001, &quot;min_intensity_sources&quot;: [&quot;ENSDF-LiveChart&quot;], &quot;min_half_life_s&quot;: 1},
+ &quot;source_priority&quot;: [&quot;DDEP&quot;, &quot;ENSDF-LiveChart&quot;, &quot;NUBASE2020&quot;, &quot;AME2020&quot;],
+ &quot;files&quot;: {&quot;nuclides.json&quot;: {&quot;sha256&quot;: &quot;…&quot;, &quot;records&quot;: 3340}}}
+</code></pre>
+<ul>
+<li><code>data_version</code> steigt bei jeder Datenänderung, Muster <code>JJJJ.MM.n</code>.</li>
+<li><code>import.min_intensity</code> ist die Intensitätsschwelle, ab der Strahlung importiert wurde; sie gilt
+  für die Quellen in <code>min_intensity_sources</code> (ENSDF). DDEP-Daten werden vollständig übernommen,
+  Beta-Zweige immer. <code>min_half_life_s</code>: ENSDF-Strahlung nur für Nuklide mit T½ ≥ 1 s.</li>
+<li><code>source_priority</code>: Reihenfolge der Quellen, falls die <code>decay_source</code> eines Nuklids für eine
+  Datenart keine Daten hat (4.5).</li>
+</ul>
+<h3 id="42-sourcesjson">4.2 <code>sources.json</code></h3>
+<p>Felder je Quelle:</p>
+<ul>
+<li><code>key</code>: eindeutiger Kurzname, z. B. <code>AME2020</code>, <code>NUBASE2020</code>, <code>DDEP</code>, <code>ENSDF-LiveChart</code>, <code>manual</code></li>
+<li><code>title</code>, <code>authors</code>, <code>publisher</code>, <code>year</code>, <code>version</code>, <code>url</code>, <code>doi</code></li>
+<li><code>license</code>: Lizenz bzw. Nutzungsbedingungen</li>
+<li><code>citation</code>: der fertige Zitiertext</li>
+<li><code>redistributable</code>: <code>true</code>/<code>false</code>. Quellen mit <code>false</code> kommen nur in lokale Builds, <strong>nie in
+  die verteilte Datenbank</strong>. Das betrifft derzeit die PGAA-Excel-Files.</li>
+<li><code>file_name</code>, <code>file_sha256</code>, <code>retrieved_at</code>, <code>notes</code></li>
+</ul>
+<h3 id="43-quantitiesjson">4.3 <code>quantities.json</code></h3>
+<p>Felder: <code>quantity</code>, <code>unit</code>, <code>dtype</code> (<code>real</code> | <code>int</code> | <code>text</code>), <code>description</code>.</p>
+<p>Anfängliche Größen:</p>
+<table>
+<thead>
+<tr>
+<th>quantity</th>
+<th>Einheit</th>
+<th>Herkunft</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mass_u</code></td>
+<td>u</td>
+<td>AME2020</td>
+</tr>
+<tr>
+<td><code>mass_excess_kev</code></td>
+<td>keV</td>
+<td>AME2020 / NUBASE2020</td>
+</tr>
+<tr>
+<td><code>binding_energy_per_nucleon_kev</code></td>
+<td>keV</td>
+<td>AME2020</td>
+</tr>
+<tr>
+<td><code>half_life_s</code></td>
+<td>s</td>
+<td>DDEP, sonst NUBASE2020</td>
+</tr>
+<tr>
+<td><code>level_energy_kev</code></td>
+<td>keV</td>
+<td>NUBASE2020 (Isomere)</td>
+</tr>
+<tr>
+<td><code>spin_parity</code></td>
+<td>text</td>
+<td>NUBASE2020</td>
+</tr>
+<tr>
+<td><code>abundance_percent</code></td>
+<td>%</td>
+<td>NUBASE2020 / IUPAC</td>
+</tr>
+<tr>
+<td><code>sigma_capture_b</code></td>
+<td>b</td>
+<td>derzeit nur in lokalen Datenbanken (PGAA-Excel, 4.12)</td>
+</tr>
+<tr>
+<td><code>g_factor_westcott</code></td>
+<td>1</td>
+<td>derzeit nur in lokalen Datenbanken (PGAA-Excel)</td>
+</tr>
+<tr>
+<td><code>resonance_integral_b</code></td>
+<td>b</td>
+<td>vorgesehen, noch ohne Daten</td>
+</tr>
+<tr>
+<td><code>q_beta_minus_kev</code>, <code>q_alpha_kev</code>, <code>q_ec_kev</code></td>
+<td>keV</td>
+<td>AME2020</td>
+</tr>
+</tbody>
+</table>
+<p>Eine <strong>neue Größe ist nur ein neuer Eintrag</strong> in dieser Datei. Am Format ändert sich nichts.</p>
+<h3 id="44-elementsjson">4.4 <code>elements.json</code></h3>
+<p>Felder: <code>z</code>, <code>symbol</code>, <code>name_en</code>, <code>name_de</code>, <code>source</code> (Quelle der Namen), optional <code>atomic_weight_u</code>,
+<code>atomic_weight_u_unc</code>, <code>atomic_weight_text</code>, <code>sigma_capture_b</code>, <code>sigma_capture_b_unc</code>,
+<code>sigma_capture_text</code>. Weil die Messwerte aus anderen Quellen stammen können als die Namen, hat jede
+Wertgruppe ihr eigenes Quellenfeld: <code>atomic_weight_source</code>, <code>sigma_capture_source</code>.</p>
+<h3 id="45-nuclidesjson">4.5 <code>nuclides.json</code></h3>
+<p>Beispiel (Zahlenwerte nur zur Veranschaulichung):</p>
+<pre><code class="language-json">{&quot;name&quot;: &quot;Co-60&quot;, &quot;z&quot;: 27, &quot;a&quot;: 60, &quot;isomer&quot;: 0, &quot;stable&quot;: false,
+ &quot;decay_source&quot;: &quot;DDEP&quot;,
+ &quot;values&quot;: {
+   &quot;half_life_s&quot;: [{&quot;value&quot;: 166344192, &quot;unc&quot;: 12096, &quot;source&quot;: &quot;DDEP&quot;, &quot;preferred&quot;: true},
+                   {&quot;value&quot;: 166338000, &quot;unc&quot;: 24000, &quot;source&quot;: &quot;NUBASE2020&quot;}],
+   &quot;mass_u&quot;: [{&quot;value&quot;: 59.933816299, &quot;unc&quot;: 4.6e-8, &quot;source&quot;: &quot;AME2020&quot;, &quot;preferred&quot;: true}]}}
+</code></pre>
+<ul>
+<li><code>stable</code>: <code>true</code> bei stabilen Nukliden, also den Endprodukten von Zerfallsketten. Auch
+  „beobachtungsstabile“ Nuklide, für die nur vermutete Zerfälle (<code>branching_flag: "?"</code>) bekannt sind,
+  gelten als stabil; Ketten enden dort.</li>
+<li>Optionale Felder: <code>nubase_state</code>, <code>discovery_year</code>, <code>isomer_order_uncertain</code> (NUBASE), <code>ddep_reference</code>
+  (Evaluator und Jahr), <code>ensdf_reference</code> (ENSDF-Bearbeiter und Stand).</li>
+<li><code>decay_source</code>: die <strong>bevorzugte Quelle für alle Zerfallsdaten dieses Nuklids</strong>, also
+  Zerfallsarten und alle <code>decay_*</code>-Linien. Vorgabe ist DDEP, sofern evaluiert, sonst
+  ENSDF-LiveChart. Linien aus anderen Quellen bleiben zum Vergleich gespeichert, die API liefert
+  sie aber nur auf Anfrage.
+  Hat die <code>decay_source</code> für eine Datenart (z. B. Alpha-Linien) keine Daten, nimmt die API die
+  erste vorhandene Quelle nach <code>manifest.source_priority</code>, sonst alphabetisch.
+  Einträge aus der Ergänzungsdatenbank (Overlay) werden immer mitgeliefert.</li>
+<li>Ist nur ein Wert vorhanden, gilt er als bevorzugt, auch ohne <code>preferred</code>.</li>
+<li><code>values</code>: Größe → Liste von Werten. Genau ein Wert ist <code>preferred</code>, die Felder sind die aus 3.2.</li>
+</ul>
+<h3 id="46-decay_modesjson">4.6 <code>decay_modes.json</code></h3>
+<p>Felder:</p>
+<ul>
+<li><code>parent</code></li>
+<li><code>mode</code>: in NUBASE-Schreibweise, also <code>B-</code>, <code>B+</code>, <code>EC</code>, <code>e+</code>, <code>A</code>, <code>IT</code>, <code>SF</code>, <code>p</code>, <code>2p</code>, <code>n</code>, <code>2n</code>,
+  <code>2B-</code>, <code>B-n</code>, <code>B-2n</code>, <code>B-A</code>, <code>B+p</code>, <code>B-SF</code>, Clusterzerfälle wie <code>14C</code> …
+  (<code>B+</code> umfasst in NUBASE β⁺ <strong>und</strong> EC.)</li>
+<li><code>daughter</code>: Grundzustand der Tochter; <code>null</code> bei Spaltung (<code>SF</code>, <code>B-SF</code> …) und bei kombinierten
+  Clusterzerfällen. IT führt zum Grundzustand desselben Nuklids.</li>
+<li><code>branching</code>, <code>branching_unc</code> (Bruchteil), <code>branching_flag</code> (<code>?</code> unbekannt, <code>~</code>, <code>&lt;</code>, <code>&gt;</code>, <code>sys</code>),
+  <code>q_value_kev</code>, <code>source</code>, optional <code>text</code> (Originalangabe).</li>
+<li><code>parent_mode</code>: bei <strong>Teilzweigen</strong> der Hauptzweig, in dem sie enthalten sind. Beispiel Li-11:
+  <code>B-</code> = 100 %, davon <code>B-n</code> = 86,3 % mit <code>parent_mode: "B-"</code>. EC bzw. e+ sind nur dann Teilzweig von
+  <code>B+</code>, wenn <code>B+</code> schon (fast) alles umfasst (<code>B+=100;EC=60</code>), bei <code>EC=61;B+=39</code> sind es getrennte Zweige.</li>
+</ul>
+<p>Die Summe der Hauptzweige (ohne <code>parent_mode</code>) je Mutter und Quelle ist ≈ 1 und wird geprüft,
+sofern alle Anteile bekannt sind.
+Eine fehlende Tochter ist ein Datenfehler. Sie gilt nicht stillschweigend als stabil.</p>
+<p><strong>Effektiver Anteil</strong> (berechnet die Lese-API als <code>effective_branching</code>): Anteil, der wirklich zur
+angegebenen Tochter führt. Beim Hauptzweig werden die Teilzweige mit anderer Tochter abgezogen
+(Li-11: <code>B-</code> → Be-11 effektiv 6 %). Teilzweige mit derselben Tochter wie ihr Hauptzweig sind nur
+Information (<code>informational</code>) und zählen in Ketten nicht doppelt. Konsumenten, die Ketten oder
+Aktivitäten rechnen, verwenden <strong>immer</strong> <code>effective_branching</code>.</p>
+<h3 id="46a-isomer_feedingjson">4.6a <code>isomer_feeding.json</code></h3>
+<p>NUBASE und DDEP nennen als Tochter nur den Grundzustand (Mo-99 → Tc-99 100 %). Welcher Anteil
+tatsächlich im <strong>Isomer</strong> der Tochter landet, steht hier:</p>
+<ul>
+<li><code>parent</code>, <code>mode</code> (Zerfallsart laut Quelle), <code>isomer</code> (z. B. <code>Tc-99m</code>),</li>
+<li><code>fraction</code>: Anteil <strong>aller</strong> Zerfälle der Mutter, die das Isomer bevölkern (0…1),</li>
+<li><code>method</code> (<code>ENSDF-Niveaubilanz</code>: direkte β/EC/α-Fütterung des Isomerniveaus + alle Übergänge, die
+  dort enden, Gammaintensität × (1 + Konversionskoeffizient)), <code>source</code>.</li>
+</ul>
+<p>Beispiele: Mo-99 → Tc-99m 0,878; Cs-137 → Ba-137m 0,947; Th-234 → Pa-234m 0,993;
+Rb-83 → Kr-83m 0,743; Sb-125 → Te-125m 0,231.</p>
+<p>Die Lese-API wendet die Fütterung in <code>decay_modes()</code> und <code>chain()</code> <strong>automatisch</strong> an: Der Zweig
+zum Grundzustand wird um <code>fraction</code> verkleinert, und ein zusätzlicher Zweig zum Isomer erscheint
+(<code>effective_branching = fraction</code>, Feld <code>isomer_feeding: true</code>, <code>branching: null</code>). Für Mo-99 liefert
+<code>decay_modes()</code> also B- → Tc-99m 0,878 und B- → Tc-99 0,122. Bei eigenen Zerfallswegen aus dem
+Overlay wird nichts aufgeteilt. Wer die Dateien ohne <code>nucdb</code> liest, muss diese Aufteilung selbst
+vornehmen.</p>
+<h3 id="47-zerfallsstrahlung-decay_json">4.7 Zerfallsstrahlung (<code>decay_*.json</code>)</h3>
+<p>Gemeinsame Felder: <code>nuclide</code> (das <strong>zerfallende</strong> Nuklid), <code>energy_kev</code>, <code>energy_kev_unc</code>,
+<code>intensity</code>, <code>intensity_unc</code> (pro Zerfall), <code>source</code>, sowie optional <code>_flag</code>-Felder.</p>
+<table>
+<thead>
+<tr>
+<th>Datei</th>
+<th>Zusätzliche Felder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>decay_gamma.json</code></td>
+<td><code>radiation</code>: <code>G</code> (Gamma), <code>XK</code>/<code>XL</code> (Röntgen; <code>xray_line</code> in Schreibweise der Quelle, DDEP z. B. <code>Ka1</code>, <code>K'b1</code>, ENSDF z. B. <code>KA1</code>, <code>L</code>), <code>ANN</code> (511 keV aus β⁺, Intensität bis 2: zwei Quanten pro Positron). Optional: <code>origin</code> (aussendender Kern bzw. Atom), <code>energy_range_kev</code> [von, bis] bei Röntgengruppen, <code>multipolarity</code>, <code>conversion_coeff</code>, <code>decay_mode</code>. NAA-Daten stehen getrennt in <code>activation_gamma.json</code> (4.10)</td>
+</tr>
+<tr>
+<td><code>decay_alpha.json</code></td>
+<td>optional <code>daughter_level_kev</code>, <code>beta_delayed: true</code> (β-verzögerte „long-range“ Alphas, z. B. beim Bi-212-Zerfall aus angeregtem Po-212)</td>
+</tr>
+<tr>
+<td><code>decay_beta.json</code></td>
+<td><code>type</code>: <code>B-</code> oder <code>B+</code>. <strong><code>energy_kev</code> ist die Endpunktenergie (= E_max)</strong>, dazu <code>mean_energy_kev</code> (+ <code>_unc</code>), optional <code>transition</code> (ENSDF-Schreibweise: <code>A</code> erlaubt, <code>1NU</code> erstverboten nicht-unique, <code>1U</code>, <code>2U</code> … für Spektrenformen im LSC-Tool), <code>log_ft</code>, <code>daughter_level_kev</code>; bei β⁺ zusätzlich <code>ec_intensity</code> (EC-Anteil zum selben Niveau)</td>
+</tr>
+<tr>
+<td><code>decay_electron.json</code></td>
+<td><code>type</code>: <code>CE</code> (Konversion) oder <code>AU</code> (Auger), <code>shell</code> (z. B. <code>K</code>, <code>L</code>, <code>KLL</code>, <code>KLX</code>). Intensitäten können über 1 liegen (mehrere Auger-Elektronen pro Zerfall)</td>
+</tr>
+</tbody>
+</table>
+<p>Röntgen- und Auger-Linien stammen von der Atomhülle der Tochter, werden aber beim zerfallenden
+Nuklid geführt, so wie in DDEP und ENSDF.</p>
+<p>Gammalinien werden vom angeregten Tochterkern ausgesandt (<code>origin</code>), gehören aber zum Zerfall des
+genannten Nuklids (<code>nuclide</code>). Linien aus dem Zerfall von Folgenukliden stehen bei diesen, nie bei
+der Mutter (Sr-90 hat keine Gammas; die 2186 keV gehören zu Y-90).</p>
+<p><strong>Quellen der Zerfallsstrahlung:</strong> DDEP (Lara-Dateien) liefert für die rund 250 dort evaluierten
+Nuklide Gamma-, Röntgen- und Alphalinien sowie Zerfallsarten; diese Nuklide haben
+<code>decay_source: "DDEP"</code>. Beta- und Elektronendaten fehlen in DDEP; für sie greift die Rückfallregel
+(4.5) auf ENSDF. Alle anderen Nuklide bekommen ihre Strahlung aus ENSDF (IAEA LiveChart), ihre
+Zerfallsarten aus NUBASE2020. Isomere werden über die Anregungsenergie des Mutterzustands zugeordnet.</p>
+<h3 id="48-special_linesjson">4.8 <code>special_lines.json</code></h3>
+<p>Diese Linien gehören zu keinem Nuklid, tauchen aber in Spektren auf. Felder:</p>
+<ul>
+<li><code>kind</code>: <code>annihilation</code>, <code>sum</code>, <code>single_escape</code>, <code>double_escape</code>, <code>xray_fluorescence</code>, <code>backscatter</code>,
+  <code>compton_edge</code></li>
+<li><code>energy_kev</code> (fester Wert) <strong>oder</strong> <code>offset_kev</code> (relativ zu einer Linie E)</li>
+<li><code>origin</code>, <code>description</code>, <code>source</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>kind</th>
+<th>Energie</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>annihilation</code></td>
+<td>511.00 keV</td>
+<td>Vernichtungsstrahlung</td>
+</tr>
+<tr>
+<td><code>sum</code></td>
+<td>1022.00 keV</td>
+<td>Summenpeak 2 × 511 keV</td>
+</tr>
+<tr>
+<td><code>single_escape</code></td>
+<td>E − 511</td>
+<td>Escape-Peak bei Paarbildung (E &gt; 1022 keV)</td>
+</tr>
+<tr>
+<td><code>double_escape</code></td>
+<td>E − 1022</td>
+<td>Doppel-Escape-Peak</td>
+</tr>
+<tr>
+<td><code>xray_fluorescence</code></td>
+<td>Pb Kα1 74.97, Kα2 72.80, Kβ ≈ 84.9 keV</td>
+<td>Röntgenfluoreszenz der Bleiabschirmung</td>
+</tr>
+<tr>
+<td><code>backscatter</code></td>
+<td>E / (1 + 2E/m_e c²), berechnet</td>
+<td>Rückstreupeak</td>
+</tr>
+<tr>
+<td><code>compton_edge</code></td>
+<td>2E² / (m_e c² + 2E), berechnet</td>
+<td>Compton-Kante</td>
+</tr>
+</tbody>
+</table>
+<p>m_e c² = 510.99895 keV (CODATA 2018). Die Pb-Röntgenenergien stammen aus dem X-Ray Data Booklet (2009).
+<code>backscatter</code> und <code>compton_edge</code> haben keine feste Energie; <code>nucdb.physics</code> berechnet sie.</p>
+<h3 id="49-prompt_gammajson-getrennt">4.9 <code>prompt_gamma.json</code> (getrennt)</h3>
+<p>Felder:</p>
+<ul>
+<li><code>target</code>: das eingefangene Nuklid, z. B. <code>Fe-56</code></li>
+<li><code>product</code>: z. B. <code>Fe-57</code></li>
+<li><code>element</code></li>
+<li><code>energy_kev</code>, <code>energy_kev_unc</code></li>
+<li><code>sigma_partial_b</code>, <code>sigma_partial_b_unc</code>: elementarer partieller Querschnitt σγ</li>
+<li><code>k0</code>, <code>k0_unc</code></li>
+<li><code>source</code></li>
+</ul>
+<p>Die bisherige Quelle (PGAA-Excel, Schlüssel <code>PGAA-XLS</code>) ist noch nicht zur Weitergabe freigegeben.
+Bis zur Klärung ist diese Datei in der verteilten Datenbank <strong>leer</strong> und nur in lokalen Datenbanken
+befüllt (4.12). Tools müssen mit einer leeren Datei umgehen können. Eine mögliche freie Quelle ist
+IAEA EGAF.</p>
+<h3 id="410-activation_gammajson-naa">4.10 <code>activation_gamma.json</code> (NAA)</h3>
+<p>Zerfallslinien von Aktivierungsprodukten, aber mit Werten <strong>pro Target</strong> statt pro Zerfall:
+<code>target</code> (z. B. <code>Al-27</code>), <code>product</code> (<code>Al-28</code>), <code>element</code>, <code>energy_kev</code> (+ <code>_unc</code>), <code>sigma_partial_b</code>
+(+ <code>_unc</code>, elementarer partieller Querschnitt σγ), <code>k0</code> (+ <code>_unc</code>), optional <code>half_life_s</code> und
+<code>half_life_text</code> des Produkts laut Quelle, <code>source</code>. Für die Neutronenaktivierungsanalyse; die Linien
+pro Zerfall stehen weiterhin in <code>decay_gamma.json</code>. Python: <code>db.activation_gammas(element="Al")</code>.</p>
+<h3 id="411-changelogjson">4.11 <code>changelog.json</code></h3>
+<p>Felder: <code>changed_at</code>, <code>file</code>, <code>record</code>, <code>field</code>, <code>old</code>, <code>new</code>, <code>comment</code>.
+Es gibt keine Benutzerverwaltung, nur Befugte bearbeiten die Datenbank.</p>
+<h3 id="412-lokale-datenbanken-und-nicht-weitergebbare-quellen">4.12 Lokale Datenbanken und nicht weitergebbare Quellen</h3>
+<ul>
+<li>Quellen mit <code>redistributable: false</code> (derzeit <code>PGAA-XLS</code>, außerdem <code>user</code> im Overlay) dürfen
+  <strong>nie</strong> in die verteilte Datenbank (<code>src/nucdb/data</code>, Releases, NucOffice-Verteilung).</li>
+<li>Für den eigenen Gebrauch gibt es eine <strong>lokale Datenbank</strong> = verteilte Daten + nicht weitergebbare
+  Quellen: <code>nucdb build db-local --src db-source --local</code>. Der Ordner <code>db-local/</code> steht in
+  <code>.gitignore</code>. Tools nutzen sie, indem sie ihren Pfad ausdrücklich übergeben (Abschnitt 2, Punkt 1).</li>
+<li><code>nucdb validate --distributable</code> meldet Fehler, sobald Daten aus solchen Quellen enthalten sind.
+  Das ist Pflicht vor jeder Veröffentlichung; ein Test prüft es für <code>src/nucdb/data</code>.</li>
+</ul>
+<h2 id="5-regeln-fur-konsumenten">5. Regeln für Konsumenten</h2>
+<ol>
+<li>Die zentrale Datenbank <strong>nur lesen</strong>. Eigene Einträge gehen ausschließlich in die Overlay-Datenbank (8).</li>
+<li>Beim Laden die <code>schema_version</code> prüfen. Bei gleicher MAJOR-Version ist die Datenbank
+   kompatibel, sonst eine verständliche Meldung ausgeben.</li>
+<li>Unbekannte Dateien, Felder und Größen ignorieren.</li>
+<li><strong>Prompt-Gammas nie mit Zerfallsstrahlung mischen.</strong> <code>prompt_gamma.json</code> nur laden, wenn der
+   Nutzer ausdrücklich ein (n,γ)-Spektrum auswertet.</li>
+<li>Für die Peak-Identifikation in Zerfallsspektren <code>decay_gamma.json</code> und <code>special_lines.json</code>
+   verwenden.</li>
+<li>Bei der Anzeige von Werten die Quelle verfügbar machen, z. B. als Tooltip.</li>
+<li>Python-Tools nutzen die Lese-API aus Abschnitt 9. Andere Sprachen lesen die Dateien direkt
+   nach dieser Spezifikation.</li>
+</ol>
+<h3 id="peak-identifikation-find_gammas">Peak-Identifikation (<code>find_gammas</code>)</h3>
+<ul>
+<li>Durchsucht Gamma-/Röntgenlinien (bevorzugte Quelle je Nuklid), feste Sonderlinien und Single-/
+  Double-Escape-Peaks. Prompt-Gammas nie.</li>
+<li>Standard-Sortierung nach <code>score</code> = Intensität × exp(−½·(Δ/(tol/2))²); Escape-Peaks zählen mit 5 %
+  bzw. 2 %, feste Sonderlinien mit 0,5, Linien ohne Intensität mit 10⁻⁴. <code>sort="delta"</code> sortiert nur
+  nach Abstand.</li>
+<li>511-keV-Linien einzelner β⁺-Strahler (<code>ANN</code>) sind standardmäßig ausgeblendet; die Sonderlinie
+  <code>annihilation</code> steht für alle (<code>include_annihilation=True</code> blendet sie ein).</li>
+<li>Die Datenbank enthält alle bekannten Nuklide, also auch sehr exotische. Tools sollten die Suche
+  deshalb auf ihre Nuklidbibliothek (<code>nuclides=</code>) oder eine Mindest-Halbwertszeit beschränken.</li>
+</ul>
+<h2 id="6-abgeleitete-groen">6. Abgeleitete Größen</h2>
+<p>Sie werden <strong>nicht gespeichert</strong>, die API berechnet sie:</p>
+<ul>
+<li><code>n = a − z</code></li>
+<li>λ = ln 2 / T½</li>
+<li>B = Z·m(¹H) + N·m_n − M_Atom (mit der <strong>Atommasse von ¹H</strong>, nicht der Protonenmasse)</li>
+<li>Kettenrechnungen (Bateman, Gleichgewichte)</li>
+</ul>
+<h2 id="6a-einheiten-umrechnen-eingeben-und-anzeigen">6a. Einheiten umrechnen, eingeben und anzeigen</h2>
+<p><strong>Grundsatz:</strong> In der Datenbank steht jede Größe in genau <strong>einer</strong> festen Einheit (3.1),
+z. B. Halbwertszeiten immer in Sekunden. Umgerechnet wird <strong>ausschließlich im Paket <code>nucdb</code></strong>
+(Modul <code>nucdb.units</code>). Kein Tool baut eigene Umrechnungen. Dadurch rechnen alle Tools gleich, und
+Fehler müssen nur an einer Stelle behoben werden.</p>
+<h3 id="festgelegte-definitionen">Festgelegte Definitionen</h3>
+<table>
+<thead>
+<tr>
+<th>Einheit</th>
+<th>Wert</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 a (Jahr)</td>
+<td>365.2422 d = 31 556 926,08 s (tropisches Jahr, wie in NUBASE2020; NUBASE nennt gerundet 31 556 926 s). DDEP rechnet ebenso: bei 17 von 19 eindeutig entscheidbaren Nukliden passen die DDEP-Angaben in Jahren und Sekunden nur zum tropischen Jahr</td>
+</tr>
+<tr>
+<td>1 d</td>
+<td>86 400 s</td>
+</tr>
+</tbody>
+</table>
+<p>Importer rechnen Originalangaben mit der Jahresdefinition der jeweiligen Quelle um. Die
+Originalschreibweise bleibt in <code>_text</code> erhalten.</p>
+<h3 id="unterstutzte-einheiten-erweiterbar">Unterstützte Einheiten (erweiterbar)</h3>
+<table>
+<thead>
+<tr>
+<th>Größe</th>
+<th>Einheiten</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zeit, Halbwertszeit</td>
+<td><code>fs ps ns µs (us) ms s min h d a</code> (Synonyme: <code>y</code>, <code>yr</code>, <code>Jahr</code>, <code>Jahre</code>, <code>Tag</code>, <code>Tage</code>, <code>Std</code>)</td>
+</tr>
+<tr>
+<td>Zerfallskonstante</td>
+<td><code>1/s 1/min 1/h 1/d 1/a</code> (auch <code>s^-1</code>, <code>s⁻¹</code>, <code>/s</code>)</td>
+</tr>
+<tr>
+<td>Energie</td>
+<td><code>eV keV MeV</code></td>
+</tr>
+<tr>
+<td>Masse</td>
+<td><code>u</code>, <code>MeV/c²</code>, <code>kg</code></td>
+</tr>
+<tr>
+<td>Wirkungsquerschnitt</td>
+<td><code>µb mb b</code>, <code>cm²</code></td>
+</tr>
+<tr>
+<td>Intensität, Häufigkeit</td>
+<td>Bruchteil, <code>%</code></td>
+</tr>
+</tbody>
+</table>
+<p>Groß-/Kleinschreibung wird toleriert, wo das eindeutig ist. <code>M</code> (Mega) und <code>m</code> (milli) werden
+dabei nicht verwechselt.</p>
+<h3 id="funktionen">Funktionen</h3>
+<pre><code class="language-python">from nucdb import units
+units.convert(3.8235, &quot;d&quot;, &quot;h&quot;)                      # 91.764
+units.parse_quantity(&quot;5,2711(8) a&quot;, kind=&quot;time&quot;)     # Quantity(value=166339713.06…, unc=25245.5…, unit=&quot;s&quot;)
+units.parse_quantity(&quot;2.1e-6 1/s&quot;, kind=&quot;half_life&quot;).value   # Zerfallskonstante als Eingabe -&gt; T½ in s
+units.half_life_to_lambda(t_s, unc_s)                # λ und Unsicherheit (fortgepflanzt)
+units.format_time(166339713, unit=&quot;auto&quot;)            # &quot;5.271 a&quot; – sinnvolle Einheit automatisch
+units.format_time(166339713, &quot;d&quot;, 25245, decimal_comma=True)   # &quot;1925,23(29) d&quot;
+co.half_life(unit=&quot;d&quot;)                               # Nuklid-Objekte nehmen eine Wunscheinheit an
+co.decay_constant(unit=&quot;1/h&quot;)
+</code></pre>
+<ul>
+<li><strong>Eingabe:</strong> Wo Nutzer eine Halbwertszeit eintragen (Editor, Overlay, Konsumenten-GUIs), darf
+  wahlweise eine Halbwertszeit <strong>oder</strong> eine Zerfallskonstante in jeder unterstützten Einheit
+  eingegeben werden. Gespeichert wird immer <code>half_life_s</code>.</li>
+<li><strong>Anzeige:</strong> Die Einheit ist in jedem Tool frei wählbar. <code>unit="auto"</code> wählt eine gut lesbare
+  Einheit. Unsicherheiten werden immer mit umgerechnet.</li>
+<li><code>nucdb.units</code> braucht wie die übrige Lese-API nur die Standardbibliothek. Eigene Umrechnungen von
+  Halbwertszeiten in den Tools werden bei der Umstellung durch <code>nucdb.units</code> ersetzt
+  (<a href="integration.html"><code>NUCDB-INTEGRATION.md</code></a>).</li>
+</ul>
+<h2 id="7-versionsregeln">7. Versionsregeln</h2>
+<table>
+<thead>
+<tr>
+<th>Änderung</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>neue Größe in <code>quantities.json</code>, neues optionales Feld, neue Datei</td>
+<td>MINOR</td>
+</tr>
+<tr>
+<td>Feld umbenannt oder entfernt, Einheit oder Bedeutung geändert</td>
+<td>MAJOR</td>
+</tr>
+<tr>
+<td>Datenänderung</td>
+<td><code>data_version</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="8-erganzungsdatenbank-overlay-fur-eigene-nutzereintrage">8. Ergänzungsdatenbank (Overlay) für eigene Nutzereinträge</h2>
+<ul>
+<li>Ort: <code>&lt;Benutzer-Datenordner&gt;/nucdb-user/</code></li>
+<li>Linux: <code>~/.local/share/nucdb-user/</code></li>
+<li>Windows: <code>%LOCALAPPDATA%\nucdb-user\</code></li>
+<li>Gleiches Format wie die zentrale Datenbank, aber nur die Dateien, die man braucht.
+  Die Quelle ist <code>user</code> oder eine eigene Quelle in <code>sources.json</code> des Overlays. Die Quelle <code>user</code>
+  ist <code>redistributable: false</code>. In Overlay-Einträgen von <code>decay_modes.json</code> darf <code>mode</code> fehlen
+  (z. B. wenn nur Tochter und Anteil bekannt sind).</li>
+<li>Die API legt das Overlay <strong>über</strong> die zentrale Datenbank:</li>
+<li>neue Nuklide und Linien kommen hinzu,</li>
+<li>zusätzliche Werte bekannter Nuklide werden angehängt,</li>
+<li>ein Overlay-Wert mit <code>preferred: true</code> übersteuert den zentralen Wert.</li>
+<li>Alle Tools sehen dasselbe Overlay. Ein Nuklid, das in ActivityPartitioner angelegt wird, ist
+  also auch in plotSPE sichtbar.</li>
+<li>Overlay-Einträge sind in der API und der Oberfläche als „eigener Eintrag“ erkennbar
+  (<code>nuclide.user</code>, <code>value.user</code>, <code>line.user</code>).</li>
+<li>Der Editor kann Overlay-Einträge prüfen und in die zentrale Datenbank übernehmen.</li>
+</ul>
+<p><strong>Schreiben</strong> (nur über <code>db.user</code>, Abschnitt 9):</p>
+<table>
+<thead>
+<tr>
+<th>Funktion</th>
+<th>schreibt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>add_nuclide</code>, <code>remove_nuclide</code></td>
+<td>eigenes Nuklid samt Zerfallswegen (<code>nuclides.json</code>, <code>decay_modes.json</code>)</td>
+</tr>
+<tr>
+<td><code>add_value</code></td>
+<td>eigener Wert einer Größe, z. B. Halbwertszeit (<code>nuclides.json</code>)</td>
+</tr>
+<tr>
+<td><code>add_gamma</code>, <code>remove_gamma</code></td>
+<td>eigene Gamma-/Röntgenlinie (<code>decay_gamma.json</code>), z. B. ein in plotSPE gefundener Peak</td>
+</tr>
+<tr>
+<td><code>add_emission</code>, <code>remove_emission</code></td>
+<td>eigene Linie bzw. eigener Zweig jeder Strahlungsart (<code>decay_gamma/alpha/beta/electron.json</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Eigene Linien haben die Felder aus 4.7 plus optional <code>energy_kev_text</code> (Eingabe), <code>note</code> und
+<code>added_at</code>. Sie lassen sich zu <strong>jedem</strong> Nuklid hinzufügen (zentral oder eigen) und erscheinen
+sofort in <code>gammas()</code>, <code>find_gammas()</code> usw. Eine eigene Linie bei derselben Energie (±1 eV) wird
+ersetzt; zentrale Linien lassen sich nicht löschen.</p>
+<p><strong>Gleichzeitiges Schreiben:</strong> Während eines Schreibvorgangs liegt im Overlay-Ordner die Sperrdatei
+<code>.lock</code>. Ein zweites Programm wartet bis zu 10 s und meldet dann <code>OverlayLockedError</code>; eine Sperre,
+die älter als 60 s ist (abgestürztes Programm), wird übernommen.</p>
+<p><strong>Änderungen anderer Programme:</strong> Ein laufendes Tool sieht Änderungen, die ein anderes Tool am
+Overlay macht, erst nach <code>db.reload()</code>. <code>db.reload_if_changed()</code> prüft das billig (Zeitstempel der
+Dateien) und lädt nur bei Bedarf neu – z. B. beim Fokuswechsel des Fensters aufrufen.</p>
+<h2 id="9-python-lese-api-paket-nucdb">9. Python-Lese-API (Paket <code>nucdb</code>)</h2>
+<p>Die API hat keine GUI-Abhängigkeiten und kommt nur mit der Standardbibliothek aus. Dateien werden
+erst beim ersten Zugriff geladen. Pro Datei gibt es einen Index nach Nuklid und Energie.</p>
+<pre><code class="language-python">from nucdb import NucDB
+db = NucDB()                                   # Fundort nach Abschnitt 2, oder NucDB(path)
+co = db.nuclide(&quot;60Co&quot;)                        # Nuclide(name=&quot;Co-60&quot;, z=27, a=60, isomer=0, …)
+co.half_life_s, co.half_life(&quot;a&quot;), co.decay_constant(&quot;1/h&quot;)
+co.value(&quot;mass_u&quot;); co.values(&quot;half_life_s&quot;)   # bevorzugter Wert bzw. alle Werte mit Quellen
+db.gammas(&quot;Bi-214&quot;, min_intensity=0.005)       # aus decay_source
+db.alphas(&quot;Po-214&quot;); db.betas(&quot;Sr-90&quot;); db.electrons(&quot;Cs-137&quot;)
+db.find_gammas(609.3, tol_kev=1.5)             # Peak-ID: LineMatch(kind=decay|single_escape|double_escape|special, score)
+db.find_gammas(1460.8, 1.0, nuclides=bibliothek)            # nur Kandidaten einer Nuklidbibliothek
+db.find_gammas(1460.8, 1.0, min_half_life_s=3600)           # nur Nuklide mit T½ ≥ 1 h
+db.prompt_gammas(element=&quot;Fe&quot;)                 # lädt prompt_gamma.json erst hier
+db.find_prompt_gammas(2223.2, tol_kev=1.0)
+db.activation_gammas(element=&quot;Al&quot;)             # NAA-Daten (nur lokale Datenbanken, sonst leer)
+db.chain(&quot;Rn-222&quot;)                             # Kette mit Verzweigungen bis zu stabilen Nukliden
+db.chain(&quot;Th-232&quot;, min_branching=1e-6, include_unknown=False)   # ohne extrem seltene/unbekannte Zweige
+[m.effective_branching for m in db.decay_modes(&quot;Bi-212&quot;)]
+db.decay_modes(&quot;Mo-99&quot;)                        # B- → Tc-99m 0.878 und B- → Tc-99 0.122 (Isomer-Fütterung)
+db.isomer_feedings(&quot;Mo-99&quot;)                    # Rohdaten der Fütterung
+db.source(&quot;NUBASE2020&quot;).citation
+db.user.add_nuclide(&quot;Mo-99&quot;, half_life=&quot;65,94 h&quot;, decays=[(&quot;Tc-99m&quot;, 0.8773), (&quot;Tc-99&quot;, 0.1227)])
+db.user.add_value(&quot;Co-60&quot;, &quot;half_life_s&quot;, &quot;1925.3(3) d&quot;)   # eigener Wert, übersteuert zentral
+db.user.remove_nuclide(&quot;Mo-99&quot;)
+db.user.add_gamma(&quot;Bi-214&quot;, &quot;1764.49(3) keV&quot;, intensity=&quot;15,3 %&quot;, note=&quot;eigene Messung&quot;)   # eigener Peak
+db.user.remove_gamma(&quot;Bi-214&quot;, 1764.49)
+db.user.add_emission(&quot;beta&quot;, &quot;Co-60&quot;, &quot;317.9 keV&quot;, intensity=0.9988, type=&quot;B-&quot;, mean_energy_kev=95.8)
+db.user.emissions(&quot;gamma&quot;, &quot;Bi-214&quot;)           # eigene Linien als Rohdatensätze
+db.reload_if_changed()                         # Änderungen anderer Programme am Overlay übernehmen
+db.location, db.data_version, db.schema_version      # welche Datenbank geladen ist
+</code></pre>
+<p>Weitere Funktionen: <code>db.nuclides(z=, a=, stable=)</code>, <code>db.has_nuclide()</code>, <code>db.element()</code>,
+<code>db.elements()</code>, <code>db.sources()</code>, <code>db.quantities()</code>, <code>db.special_lines(kind)</code>, <code>db.emissions(kind, name)</code>,
+<code>db.reload()</code>; Module <code>nucdb.names</code> (Namen lesen/normalisieren), <code>nucdb.units</code>, <code>nucdb.physics</code>
+(<code>compton_edge</code>, <code>backscatter</code>, <code>single_escape</code>, <code>double_escape</code>, Konstanten).
+Fehlerklassen: <code>UnknownNuclideError</code> (Unterklasse von <code>KeyError</code>), <code>NuclideNameError</code> (<code>ValueError</code>),
+<code>units.UnitError</code> (<code>ValueError</code>), <code>IncompatibleSchemaError</code>, <code>OverlayLockedError</code> (Overlay gerade
+gesperrt). Ungültige Eingaben beim Schreiben ins Overlay (unbekanntes Nuklid, Energie ≤ 0, Intensität
+in % statt als Bruchteil …) lösen <code>ValueError</code> mit verständlicher Meldung aus.</p>
+<h2 id="10-was-version-10-zusichert">10. Was Version 1.0 zusichert</h2>
+<p>Innerhalb von 1.x bleiben <strong>unverändert</strong>:</p>
+<ul>
+<li>Dateinamen, Formatkennungen (<code>nucdb/&lt;name&gt;</code>) und der Dateiaufbau (3.4),</li>
+<li>alle in Abschnitt 4 genannten Felder mit Name, Einheit und Bedeutung,</li>
+<li>die kanonischen Nuklidnamen und die Isomer-Regel (3.3),</li>
+<li>die Einheiten und die Jahresdefinition (3.1, 6a),</li>
+<li>der Fundort (2) und das Overlay (8),</li>
+<li>die in Abschnitt 9 genannten Funktionen, Parameter und Attribute der Lese-API.</li>
+</ul>
+<p><strong>Hinzukommen</strong> dürfen: neue Dateien, neue optionale Felder, neue Größen in <code>quantities.json</code>,
+neue optionale Parameter, neue Funktionen, neue Quellen und neue Daten (<code>data_version</code>).
+Tools müssen Unbekanntes ignorieren (Regel 5.3), dann bleiben sie mit allen 1.x-Datenbanken
+lauffähig.</p>
+<p>Nicht zugesichert sind Zahlenwerte (sie ändern sich mit neuen Evaluationen), die Reihenfolge
+gleichwertiger Treffer der Peak-Suche und die Gewichte ihrer Bewertung.</p>
+<h2 id="11-versionshistorie">11. Versionshistorie</h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Datum</th>
+<th>Änderung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>2026-11-20</td>
+<td>erster Entwurf (SQLite)</td>
+</tr>
+<tr>
+<td>0.2</td>
+<td>2026-11-20</td>
+<td>JSON statt SQLite, Fundort ohne Umgebungsvariable, <code>special_lines</code></td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>2026-11-20</td>
+<td>Strahlungsarten in getrennten Dateien (Gamma/Alpha/Beta/Elektronen), <code>decay_source</code> je Nuklid (DDEP bevorzugt), Overlay für Nutzereinträge, <code>redistributable</code> bei Quellen, Daten CC BY 4.0, Importschwelle 0,1 %</td>
+</tr>
+<tr>
+<td>0.4</td>
+<td>2026-11-20</td>
+<td>Abschnitt 6a: Einheiten-Umrechnung zentral in <code>nucdb.units</code>, Eingabe von T½ oder λ in beliebigen gängigen Einheiten, Jahresdefinition festgelegt</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>2026-11-23</td>
+<td>Mit der ersten Implementierung abgeglichen: <code>source_priority</code> im Manifest und Rückfallregel für <code>decay_source</code>, Overlay-Einträge immer sichtbar, <code>compton_edge</code>, <code>mode</code> im Overlay optional, <code>decay_constant(unit)</code> als Methode, <code>add_value</code>/<code>remove_nuclide</code></td>
+</tr>
+<tr>
+<td>0.6</td>
+<td>2026-11-23</td>
+<td>Mit dem Import von AME2020/NUBASE2020 abgeglichen: Isomer-Regel (T½ ≥ 1 ms, Zählung m, m2 …), Zerfallsarten in NUBASE-Schreibweise, <code>parent_mode</code>/<code>branching_flag</code>/<code>text</code>, effektiver Anteil, Ketten mit <code>min_branching</code></td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>2026-11-23</td>
+<td>Zerfallsstrahlung aus DDEP und ENSDF/LiveChart: zusätzliche Felder (<code>origin</code>, <code>energy_range_kev</code>, <code>beta_delayed</code>, <code>log_ft</code>, <code>ec_intensity</code>, <code>shell</code> …), Importschwellen im Manifest, Jahresdefinition von DDEP bestätigt</td>
+</tr>
+<tr>
+<td>0.8</td>
+<td>2026-11-24</td>
+<td><code>activation_gamma.json</code> (NAA), Quellenfelder je Wertgruppe in <code>elements.json</code>, lokale Datenbanken und <code>validate --distributable</code> (4.11), Größe <code>g_factor_westcott</code></td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>2026-11-24</td>
+<td>Festgeschrieben. Neu: <code>isomer_feeding.json</code> (4.6a) mit automatischer Aufteilung der Zweige. Aufgeräumt: NAA-Felder nur in <code>activation_gamma.json</code>, Begleitfelder (<code>_unc</code>/<code>unc</code>) erklärt, Zusagen (Abschnitt 10), Verweis auf <a href="integration.html"><code>NUCDB-INTEGRATION.md</code></a></td>
+</tr>
+<tr>
+<td>1.1</td>
+<td>2026-11-24</td>
+<td>Eigene Linien im Overlay schreiben (<code>add_gamma</code>, <code>add_emission</code>, <code>remove_*</code>, <code>emissions</code>), Sperre gegen gleichzeitiges Schreiben (<code>OverlayLockedError</code>), <code>overlay_changed()</code>/<code>reload_if_changed()</code>. Format unverändert, voll kompatibel zu 1.0</td>
+</tr>
+</tbody>
+</table><footer>Erzeugt aus <code>docs/NUCDB-SPEC.md</code> mit <code>tools/build_docs.py</code>.</footer></main>
+</div></body></html>

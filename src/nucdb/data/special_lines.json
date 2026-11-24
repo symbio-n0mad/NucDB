@@ -1,0 +1,12 @@
+{"format": "nucdb/special_lines", "schema_version": "1.1.0",
+ "records": [
+{"description": "Vernichtungsstrahlung (m_e c²); im Spektrum durch Doppler-Effekt verbreitert", "energy_kev": 510.99895, "kind": "annihilation", "source": "CODATA2018"},
+{"description": "Rückstreupeak E / (1 + 2E/m_e c²), berechnet mit nucdb.physics.backscatter", "kind": "backscatter", "source": "NucDB"},
+{"description": "Compton-Kante 2E² / (m_e c² + 2E), berechnet mit nucdb.physics.compton_edge", "kind": "compton_edge", "source": "NucDB"},
+{"description": "Double-Escape-Peak E − 1022 keV (nur für E > 1022 keV)", "kind": "double_escape", "offset_kev": -1021.9979, "source": "CODATA2018"},
+{"description": "Single-Escape-Peak E − 511 keV (nur für E > 1022 keV)", "kind": "single_escape", "offset_kev": -510.99895, "source": "CODATA2018"},
+{"description": "Summenpeak 2 × 511 keV (beide Vernichtungsquanten im Detektor)", "energy_kev": 1021.9979, "kind": "sum", "source": "CODATA2018"},
+{"description": "Pb Kα2 – Röntgenfluoreszenz der Bleiabschirmung", "energy_kev": 72.8042, "kind": "xray_fluorescence", "origin": "Pb", "source": "XDB2009", "xray_line": "Ka2"},
+{"description": "Pb Kα1 – Röntgenfluoreszenz der Bleiabschirmung", "energy_kev": 74.9694, "kind": "xray_fluorescence", "origin": "Pb", "source": "XDB2009", "xray_line": "Ka1"},
+{"description": "Pb Kβ1 – Röntgenfluoreszenz der Bleiabschirmung", "energy_kev": 84.936, "kind": "xray_fluorescence", "origin": "Pb", "source": "XDB2009", "xray_line": "Kb1"}
+]}

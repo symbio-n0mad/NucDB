@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nucdb"
+version = "1.1.0"
+description = "NucDB – Nukliddatenbank (JSON) mit Lese-API, Einheiten-Umrechnung und Editor"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "DATA-LICENSE.md"]
+authors = [{ name = "symbio-n0mad" }]
+# Die Lese-API kommt bewusst ohne Abhängigkeiten aus (nur Standardbibliothek).
+dependencies = []
+
+[project.optional-dependencies]
+gui = ["PySide6>=6.6", "matplotlib>=3.8"]
+dev = ["pytest>=8"]
+# nur für den Import der lokalen PGAA-Excel-Dateien (.xls)
+import = ["xlrd>=2"]
+# nur zum Erzeugen der HTML-Doku (tools/build_docs.py)
+docs = ["markdown>=3.5"]
+
+[project.scripts]
+nucdb = "nucdb.cli:main"
+
+[project.gui-scripts]
+nucdb-editor = "nucdb.gui.app:main"
+
+[project.urls]
+Repository = "https://github.com/symbio-n0mad/NucDB"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+nucdb = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

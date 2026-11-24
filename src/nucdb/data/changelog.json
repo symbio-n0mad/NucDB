@@ -1,0 +1,6 @@
+{"format": "nucdb/changelog", "schema_version": "1.1.0",
+ "records": [
+{"changed_at": "2026-11-24T12:18:23Z", "comment": "Import AME2020+NUBASE2020", "file": "*", "new": "4454 Nuklide (4454 neu), 10481 NUBASE-Werte, 20612 AME-Werte, 7369 Zerfallsarten", "record": "AME2020+NUBASE2020"},
+{"changed_at": "2026-11-24T12:18:25Z", "comment": "Import DDEP", "file": "*", "new": "DDEP: 251 Nuklide, 284 Zerfallsarten, 7990 Gamma-/Röntgenlinien, 684 Alphalinien; nur aus Mutter-Dateien: Cm-248, Fr-224, I-132, Nd-144, Np-240, Pa-232, Pb-205, Pu-236, Pu-244, Sm-147, Te-129, Th-227, Th-229, Th-230, U-233, U-240, Xe-135; übersprungen: Ra-226D.lara.txt", "record": "DDEP"},
+{"changed_at": "2026-11-24T12:18:49Z", "comment": "Import ENSDF-LiveChart", "file": "*", "new": "ENSDF/LiveChart: 8902 Dateien, Gamma/Röntgen 87986, Alpha 1040, Beta 17999, Elektronen 23910; 5861 Zeilen ohne passenden Mutterzustand; 297 Isomer-Fütterungen", "record": "ENSDF-LiveChart"}
+]}

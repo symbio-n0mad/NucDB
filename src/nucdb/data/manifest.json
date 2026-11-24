@@ -1,0 +1,78 @@
+{
+ "created_at": "2026-11-24T12:18:50Z",
+ "data_version": "2026.11.3",
+ "files": {
+  "activation_gamma.json": {
+   "records": 0,
+   "sha256": "54aa879e83ec7dfda24d0b271e9cfe0226825e6e6aafd078738ca28b670e3558"
+  },
+  "changelog.json": {
+   "records": 3,
+   "sha256": "6fbb7f2edd4e809d5b0c9ab48a3b4f37472825686a5a187426e015d338a7dbcf"
+  },
+  "decay_alpha.json": {
+   "records": 1724,
+   "sha256": "1c079d1bfe66b9880ed0c3a7dff2c02a3ad5f5e547f3453f712517acaab9c20a"
+  },
+  "decay_beta.json": {
+   "records": 17999,
+   "sha256": "1a536a4cd31d095eae5ebe548e51138f49308f20254e6c84053dc55a24c2a0a8"
+  },
+  "decay_electron.json": {
+   "records": 23910,
+   "sha256": "5f7b063608da768da5f756856e80257b49f7fc40706d7c19e2ea19be850a6961"
+  },
+  "decay_gamma.json": {
+   "records": 95976,
+   "sha256": "33a3ff1249ecfab467297ff063d858f622c037e0e54d4d5342d31768752de596"
+  },
+  "decay_modes.json": {
+   "records": 7653,
+   "sha256": "189adfc07f388b034ae7150931566ffea857e76c1b4f95497fe970c0303c83ff"
+  },
+  "elements.json": {
+   "records": 118,
+   "sha256": "7d00c8cbcecc711c8f399dbe076c5011888bc3db84a7ea6ae92b12e0566359d2"
+  },
+  "isomer_feeding.json": {
+   "records": 297,
+   "sha256": "870123e278c6f161e6cba638d815b3d474be976f42e6de6b499c73a19b75084d"
+  },
+  "nuclides.json": {
+   "records": 4454,
+   "sha256": "6b67016787fb8d674ec70fc35fb23226dbd55ff0cb6c822195a7ce1116c82040"
+  },
+  "prompt_gamma.json": {
+   "records": 0,
+   "sha256": "fe79c22f50274a69125033ded7764889f3f3a060cb4c57e950022b62285cd02b"
+  },
+  "quantities.json": {
+   "records": 12,
+   "sha256": "5d01a891fd96db67f88f7c233e6eddffad0c3eb1f3300620e9839a6b38a998cb"
+  },
+  "sources.json": {
+   "records": 7,
+   "sha256": "6f1a0bfd6b5400e0b5dcd9390d24fe0e530752e837a05db25606081039351673"
+  },
+  "special_lines.json": {
+   "records": 9,
+   "sha256": "f2b405c944213b80f9be853ff28d1a0197de8614fe2a0775850e7ca4da30b38c"
+  }
+ },
+ "format": "nucdb/manifest",
+ "import": {
+  "min_half_life_s": 1,
+  "min_intensity": 0.001,
+  "min_intensity_sources": [
+   "ENSDF-LiveChart"
+  ]
+ },
+ "license": "CC-BY-4.0",
+ "schema_version": "1.1.0",
+ "source_priority": [
+  "DDEP",
+  "ENSDF-LiveChart",
+  "NUBASE2020",
+  "AME2020"
+ ]
+}

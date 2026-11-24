@@ -1,0 +1,6 @@
+energy,unc_en,intensity,unc_i,type,shell,p_z,p_n,p_symbol,p_energy_shift,p_energy,unc_pe,jp,half_life,operator_hl,unc_hl,unit_hl,half_life_sec,unc_hls,decay,decay_%,unc_d,q,unc_q,d_z,d_n,d_symbol,ensdf_publication_cut-off,ensdf_authors,Extraction_date
+0.8,,9.12550009576512,0.012389969993081744,AU,K,11,11,Na,,0,,3+,2.6018,,22,Y,82104810.00069347,69425.2371441024,EC+B+,100,,2843.33,13,10,12,Ne,1-Apr-2015,M. Shamsuzzoha Basunia,2026-11-23
+0.8,,9.12550009576512,0.012389969993081744,AU,KLL,11,11,Na,,0,,3+,2.6018,,22,Y,82104810.00069347,69425.2371441024,EC+B+,100,,2843.33,13,10,12,Ne,1-Apr-2015,M. Shamsuzzoha Basunia,2026-11-23
+1273.6669,,0.0006356184,0.000008995040704832858,CE,K,11,11,Na,,0,,3+,2.6018,,22,Y,82104810.00069347,69425.2371441024,EC+B+,100,,2843.33,13,10,12,Ne,1-Apr-2015,M. Shamsuzzoha Basunia,2026-11-23
+1274.48853,,0.00003517888,0.000000499724299173054,CE,L,11,11,Na,,0,,3+,2.6018,,22,Y,82104810.00069347,69425.2371441024,EC+B+,100,,2843.33,13,10,12,Ne,1-Apr-2015,M. Shamsuzzoha Basunia,2026-11-23
+
