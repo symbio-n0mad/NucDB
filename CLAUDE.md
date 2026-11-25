@@ -22,4 +22,7 @@ plotSPE, plotRDE/radonlab, ActivityPartitioner.
   prüfen und `tools/build_docs.py` laufen lassen (HTML in `docs/html/`).
 - Editor: `nucdb editor` (PySide6, `src/nucdb/gui/`). Zentrale Korrekturen nur über `curation/`
   (`nucdb.curation`, Quellenpflicht); `nucdb build` wendet `curation/` automatisch an.
+- Eigene Nuklidkarte: `src/nucdb/gui/chartviewer.py` (aus `nebenprojekte/show-pdf.py`), Extra `chart`.
+  Kacheln nur im Benutzer-Cache (`~/.cache/nucdb/charts/`), nie neben die PDF (db-source bleibt
+  unberührt). Test-PDF: `db-source/Nuklidkarte.pdf` (Karlsruher Karte, nicht verteilen).
 - Status und Etappenplan: `docs/KONZEPT.md` Abschnitte 8 und 9.

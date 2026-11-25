@@ -77,7 +77,8 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
         for text, slot, key in (("Neues Nuklid …", self.new_nuclide, "Ctrl+N"),
                                 ("Neue Quelle …", self.new_source_dialog, None),
-                                ("Neu laden", self.reload, "F5")):
+                                ("Neu laden", self.reload, "F5"),
+                                ("Nuklidkarte", self.open_chart, "Ctrl+K")):
             a = QAction(text, self)
             a.triggered.connect(slot)
             if key:
@@ -134,6 +135,13 @@ class MainWindow(QMainWindow):
         self.all_sources.toggled.connect(lambda _b: self.show_nuclide(self.current))
         opts.addWidget(self.all_sources)
         opts.addStretch()
+        self.chart_follow = QCheckBox("Nuklidkarte folgt")
+        self.chart_follow.setToolTip("Eigene Nuklidkarte zeigt das gewählte Nuklid (Karte muss kalibriert sein)")
+        self.chart_follow.setChecked(True)
+        b = QPushButton("In Nuklidkarte zeigen")
+        b.clicked.connect(lambda: self.open_chart(self.current))
+        opts.addWidget(self.chart_follow)
+        opts.addWidget(b)
         rl.addLayout(opts)
         self.detail = QTabWidget()
         rl.addWidget(self.detail, 1)
@@ -425,6 +433,42 @@ class MainWindow(QMainWindow):
                 view.resizeColumnsToContents()
         finally:
             QGuiApplication.restoreOverrideCursor()
+        if self.chart is not None and self.chart.isVisible() and self.chart_follow.isChecked():
+            self.chart.show_nuclide(self.current)
+
+    # ------------------------------------------------------------------------------------
+    # Eigene Nuklidkarte (wird nicht mitgeliefert)
+    # ------------------------------------------------------------------------------------
+    chart = None
+
+    def open_chart(self, nuclide: str | None = None) -> None:
+        """Fenster mit der eigenen Nuklidkarte öffnen (zuletzt gewählte PDF), optional zu einem Nuklid."""
+        from .chartviewer import ChartWindow
+        if self.chart is None:
+            self.chart = ChartWindow(None, has_nuclide=self.db.has_nuclide)
+            self.chart.nuclide_picked.connect(self._chart_picked)
+            last = self.chart.last_file()
+            if last is not None:
+                self.chart.open_file(last)
+        self.chart.show()
+        self.chart.raise_()
+        self.chart.activateWindow()
+        if nuclide:
+            self.chart.show_nuclide(nuclide)
+
+    def _chart_picked(self, name: str) -> None:
+        if self.db.has_nuclide(name) and name != self.current:
+            follow = self.chart_follow.isChecked()
+            self.chart_follow.setChecked(False)          # Karte nicht wegspringen lassen
+            try:
+                self.select_nuclide(name)
+            finally:
+                self.chart_follow.setChecked(follow)
+
+    def closeEvent(self, event) -> None:  # noqa: N802 (Qt)
+        if self.chart is not None:
+            self.chart.close()
+        super().closeEvent(event)
 
     def select_nuclide(self, name: str) -> None:
         self.search.setText(name)

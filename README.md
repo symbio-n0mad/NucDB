@@ -50,6 +50,13 @@ zentrale Datenbank. Zentrale Änderungen landen im Ordner `curation/` und werden
 `nucdb build` nach den Importern erneut angewandt; Einträge der Ergänzungsdatenbank lassen sich mit
 einer echten Quelle übernehmen.
 
+**Eigene Nuklidkarte:** NucDB liefert keine Nuklidkarte mit (Urheber- und Datenbankrecht). Eine
+eigene (z. B. die Karlsruher Nuklidkarte als PDF) lässt sich im Editor unter „Nuklidkarte“ (Strg+K)
+oder mit `nucdb-chart karte.pdf` anzeigen – auch riesige Scans flüssig, weil die Seite einmalig in
+Kacheln zerlegt wird (`pip install 'nucdb[chart]'`, Kacheln im Benutzer-Cache). Nach dem Kalibrieren
+(je Streifen der Karte zwei Nuklide anklicken) springt die Karte zum gewählten Nuklid, und ein Klick
+in die Karte öffnet das Nuklid im Editor.
+
 ## Entwicklung
 
 ```

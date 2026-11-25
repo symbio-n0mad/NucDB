@@ -269,6 +269,13 @@ F7 (keine Benutzer), F8 (NucDB, GPL-3.0, HTML-Doku). Neue/offene Fragen siehe Ab
      (eigene Nuklide samt Werten, Zerfallswegen und Linien).
    - Nicht weitergebbare Quellen gelangen nie in eine weitergebbare Datenbank (auch nicht beim Build).
    - Spezifikation unverändert (1.1): Kurationsordner ist internes Pflegeformat.
+   - **Eigene Nuklidkarte** (2026-11-25): Viewer aus `nebenprojekte/show-pdf.py` als
+     `nucdb.gui.chartviewer` übernommen (Deep-Zoom-Kacheln, nur sichtbare Kacheln im Hintergrund
+     laden). Kacheln im Benutzer-Cache statt neben der PDF, Aufbau in eigenem Thread mit
+     Fortschrittsanzeige (Karlsruher Karte 16224 × 11403 px: ≈ 30 s einmalig, 74 MB). Kalibrierung
+     je **Abschnitt**, weil große Karten aus versetzten Streifen bestehen (Karlsruhe: z. B. Streifen
+     ab La, Z = 57); danach springt die Karte zum gewählten Nuklid, und ein Klick wählt das Nuklid
+     im Editor. Mitgeliefert wird keine Karte (Abschnitt 2, Nuklidkarte).
 6. **Etappe 6 – Plots:** B/A, Massenexzess, Nuklidkarte (N–Z), freie X/Y-Wahl; Export.
 7. **Etappe 7 – HTML-Doku, Release, Umstellung der Konsumenten** (plotSPE, radonlab, ActivityPartitioner).
 

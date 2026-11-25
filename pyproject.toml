@@ -16,6 +16,8 @@ dependencies = []
 
 [project.optional-dependencies]
 gui = ["PySide6>=6.6", "matplotlib>=3.8"]
+# eigene Nuklidkarte (große Bild-PDF) einmalig in Kacheln zerlegen; Anzeigen braucht nur gui
+chart = ["PySide6>=6.6", "pymupdf>=1.24", "pyvips[binary]>=2.2"]
 dev = ["pytest>=8"]
 # nur für den Import der lokalen PGAA-Excel-Dateien (.xls)
 import = ["xlrd>=2"]
@@ -27,6 +29,7 @@ nucdb = "nucdb.cli:main"
 
 [project.gui-scripts]
 nucdb-editor = "nucdb.gui.app:main"
+nucdb-chart = "nucdb.gui.chartviewer:main"
 
 [project.urls]
 Repository = "https://github.com/symbio-n0mad/NucDB"
