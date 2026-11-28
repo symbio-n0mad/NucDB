@@ -142,9 +142,40 @@ class UserDB:
             return q.value, u2, value
         return value, (None if unc is None else float(unc)), None
 
+    def _decay_records(self, parent: str, decays: Sequence[tuple]) -> list[dict]:
+        """``(Tochter, Anteil[, Art[, Unsicherheit]])`` → Datensätze für ``decay_modes``."""
+        out = []
+        for d in decays:
+            daughter, frac, *rest = d
+            dcanon = names.normalize(daughter)
+            if not self._db.has_nuclide(dcanon) and dcanon != parent:
+                raise ValueError(f"Tochter {dcanon} ist unbekannt. Bitte zuerst anlegen "
+                                 "(stabile Endprodukte mit stable=True).")
+            if dcanon == parent:
+                raise ValueError(f"{parent} kann nicht in sich selbst zerfallen")
+            rec: dict[str, Any] = {"parent": parent, "daughter": dcanon, "source": USER_SOURCE}
+            rec["branching"] = None if frac is None else float(frac)
+            if rec["branching"] is not None and not 0 <= rec["branching"] <= 1:
+                raise ValueError(f"Anteil {frac} für {parent} → {dcanon} ist kein Bruchteil 0…1")
+            if rest and rest[0]:
+                rec["mode"] = str(rest[0])
+            if len(rest) > 1 and rest[1] is not None:
+                rec["branching_unc"] = float(rest[1])
+            out.append(rec)
+        return out
+
     # --- Lesen ----------------------------------------------------------------------------
     def nuclide_names(self) -> list[str]:
         return [str(r.get("name")) for r in self._load("nuclides")]
+
+    def decays(self, name: str | None = None) -> list[dict]:
+        """Eigene Zerfallswege (Rohdatensätze des Overlays), optional nur einer Mutter."""
+        canon = None if name is None else names.normalize(name)
+        return [r for r in self._load("decay_modes") if canon is None or r.get("parent") == canon]
+
+    def has_own_decays(self, name: str) -> bool:
+        """``True``, wenn eigene Zerfallswege die zentralen Zweige dieses Nuklids ersetzen."""
+        return bool(self.decays(name))
 
     # --- Schreiben ------------------------------------------------------------------------
     @_writes
@@ -165,20 +196,10 @@ class UserDB:
         nid = names.parse(canon)
         if self._db.has_nuclide(canon) and canon not in self.nuclide_names():
             raise ValueError(f"{canon} steht schon in der zentralen Datenbank. Für eigene Werte "
-                             "add_value() verwenden.")
+                             "add_value() bzw. set_decays() verwenden.")
         if stable and decays:
             raise ValueError("Ein stabiles Nuklid hat keine Zerfallswege")
-        dec_recs = []
-        for d in decays:
-            daughter, frac, *rest = d
-            dcanon = names.normalize(daughter)
-            if not self._db.has_nuclide(dcanon) and dcanon != canon:
-                raise ValueError(f"Tochter {dcanon} ist unbekannt. Bitte zuerst anlegen "
-                                 "(stabile Endprodukte mit stable=True).")
-            rec = {"parent": canon, "daughter": dcanon, "branching": float(frac), "source": USER_SOURCE}
-            if rest and rest[0]:
-                rec["mode"] = str(rest[0])
-            dec_recs.append(rec)
+        dec_recs = self._decay_records(canon, decays)
 
         rec: dict[str, Any] = {"name": canon, "z": nid.z, "a": nid.a, "isomer": nid.isomer,
                                "stable": bool(stable), "decay_source": USER_SOURCE, "values": {}}
@@ -227,6 +248,57 @@ class UserDB:
         self._save("nuclides", nucs)
         self._log([{"changed_at": _now(), "file": "nuclides", "record": canon, "field": quantity,
                     "old": None, "new": v, "comment": comment}])
+
+    @_writes
+    def set_decays(self, name: str, decays: Sequence[tuple], *, comment: str | None = None) -> list[dict]:
+        """Eigene Zerfallswege eines (zentralen oder eigenen) Nuklids setzen.
+
+        Sie ersetzen in allen Tools **alle** zentralen Zweige dieses Nuklids (``decay_modes()``,
+        ``chain()``); die automatische Isomer-Aufteilung entfällt dafür. Isomere also selbst
+        angeben, z. B. die Mo-99-Verzweigung aus einem Zertifikat::
+
+            db.user.set_decays("Mo-99", [("Tc-99m", 0.8775, "B-"), ("Tc-99", 0.1225, "B-")],
+                               comment="Zertifikat PTB 2026-17")
+
+        :param decays: ``(Tochter, Anteil)``, ``(Tochter, Anteil, Art)`` oder
+            ``(Tochter, Anteil, Art, Unsicherheit)``; Anteil als Bruchteil, ``None`` = unbekannt.
+            Jede Tochter muss bereits in der Datenbank stehen.
+        Zurück zu den zentralen Zweigen mit :meth:`remove_decays`.
+        :returns: die geschriebenen Datensätze.
+        """
+        canon = names.normalize(name)
+        if not self._db.has_nuclide(canon):
+            raise ValueError(f"Unbekanntes Nuklid {canon}. Eigene Nuklide zuerst mit add_nuclide() anlegen.")
+        if not decays:
+            raise ValueError("Keine Zerfallswege angegeben. Eigene Zerfallswege entfernen: remove_decays()")
+        if self._db.nuclide(canon).stable:
+            raise ValueError(f"{canon} ist stabil und hat keine Zerfallswege")
+        recs = self._decay_records(canon, decays)
+        self._ensure_base()
+        modes = [r for r in self._load("decay_modes") if r.get("parent") != canon]
+        self._save("decay_modes", modes + recs)
+        desc = ", ".join(f"{r['daughter']} " + ("?" if r["branching"] is None else f"{r['branching']:g}")
+                         for r in recs)
+        self._log([{"changed_at": _now(), "file": "decay_modes", "record": canon, "field": None,
+                    "old": None, "new": desc, "comment": comment}])
+        return recs
+
+    @_writes
+    def remove_decays(self, name: str, *, comment: str | None = None) -> int:
+        """Eigene Zerfallswege eines Nuklids entfernen; es gelten wieder die zentralen Zweige.
+
+        :returns: Anzahl entfernter Zweige.
+        """
+        canon = names.normalize(name)
+        modes = self._load("decay_modes")
+        keep = [r for r in modes if r.get("parent") != canon]
+        removed = len(modes) - len(keep)
+        if not removed:
+            raise ValueError(f"{canon} hat keine eigenen Zerfallswege")
+        self._save("decay_modes", keep)
+        self._log([{"changed_at": _now(), "file": "decay_modes", "record": canon, "field": None,
+                    "old": "eigene Zerfallswege", "new": None, "comment": comment}])
+        return removed
 
     @_writes
     def remove_nuclide(self, name: str, *, comment: str | None = None) -> None:

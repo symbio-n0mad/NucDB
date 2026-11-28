@@ -8,6 +8,9 @@ from typing import Any
 from . import units
 from .names import NuclideId
 
+#: Empfohlene Grenze für „praktisch stabil“ (10¹⁵ a in s), z. B. für ``db.chain(stable_above_s=…)``
+PRACTICALLY_STABLE_S = 1e15 * units.YEAR_S
+
 
 class _Extra:
     """Unbekannte/optionale Felder als Attribute zugänglich machen (``line.radiation``)."""
@@ -122,6 +125,17 @@ class Nuclide:
     @property
     def half_life_unc_s(self) -> float | None:
         return self.unc("half_life_s")
+
+    def practically_stable(self, limit_s: float | None = None) -> bool:
+        """Stabil oder T½ ≥ ``limit_s`` (Standard :data:`PRACTICALLY_STABLE_S`, 10¹⁵ a).
+
+        Die Daten bleiben unverändert (Bi-209 bleibt radioaktiv); das ist nur eine gemeinsame
+        Grenze, damit alle Tools Ketten an derselben Stelle enden lassen.
+        """
+        t = self.half_life_s
+        if t is None:
+            return False
+        return t >= (PRACTICALLY_STABLE_S if limit_s is None else limit_s)
 
     def half_life(self, unit: str = "s") -> float | None:
         t = self.half_life_s
@@ -254,6 +268,7 @@ class Chain:
     edges: tuple[DecayMode, ...]
     unknown: tuple[str, ...] = ()       # Töchter, die nicht in der Datenbank stehen (Datenfehler)
     open_ends: tuple[str, ...] = ()     # instabile Nuklide ohne bekannte Zerfallsart
+    practically_stable: tuple[str, ...] = ()   # Endpunkte wegen ``stable_above_s`` (seit 1.2)
 
     def daughters(self, name: str) -> list[DecayMode]:
         return [e for e in self.edges if e.parent == name]

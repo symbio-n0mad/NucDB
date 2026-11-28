@@ -14,16 +14,17 @@ Das Format ist in ``docs/NUCDB-SPEC.md`` beschrieben.
 
 from . import names, physics, units
 from .db import IncompatibleSchemaError, NucDB, UnknownNuclideError, open_database
-from .models import ActivationGamma, Chain, DecayMode, Element, Emission, LineMatch, Nuclide, PromptGamma, Source, SpecialLine, Value
+from .models import (PRACTICALLY_STABLE_S, ActivationGamma, Chain, DecayMode, Element, Emission, LineMatch, Nuclide,
+                     PromptGamma, Source, SpecialLine, Value)
 from .names import NuclideId, NuclideNameError
 from .overlay import OverlayLockedError
 from .schema import SCHEMA_VERSION
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 __all__ = [
     "NucDB", "open_database", "IncompatibleSchemaError", "UnknownNuclideError", "OverlayLockedError",
     "Nuclide", "Value", "Source", "Element", "DecayMode", "Emission", "SpecialLine", "PromptGamma",
     "LineMatch", "Chain", "ActivationGamma", "NuclideId", "NuclideNameError", "SCHEMA_VERSION",
-    "names", "units", "physics",
+    "PRACTICALLY_STABLE_S", "names", "units", "physics",
 ]

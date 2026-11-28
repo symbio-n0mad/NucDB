@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nucdb"
-version = "1.1.0"
+version = "1.2.0"
 description = "NucDB – Nukliddatenbank (JSON) mit Lese-API, Einheiten-Umrechnung und Editor"
 readme = "README.md"
 requires-python = ">=3.11"

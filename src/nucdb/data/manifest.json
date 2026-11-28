@@ -1,5 +1,5 @@
 {
- "created_at": "2026-11-24T12:18:50Z",
+ "created_at": "2026-11-26T12:40:02Z",
  "data_version": "2026.11.3",
  "files": {
   "activation_gamma.json": {
@@ -68,7 +68,7 @@
   ]
  },
  "license": "CC-BY-4.0",
- "schema_version": "1.1.0",
+ "schema_version": "1.2.0",
  "source_priority": [
   "DDEP",
   "ENSDF-LiveChart",

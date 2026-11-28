@@ -252,7 +252,7 @@ class MainWindow(QMainWindow):
                      "sie sind nicht weitergebbar, bis sie mit einer echten Quelle übernommen werden.")
         lab.setWordWrap(True)
         lay.addWidget(lab)
-        cols = [Column("Art", lambda e: {"nuclide": "Nuklid", "value": "Wert", "gamma": "Gamma", "alpha": "Alpha",
+        cols = [Column("Art", lambda e: {"nuclide": "Nuklid", "value": "Wert", "decays": "Zerfallswege", "gamma": "Gamma", "alpha": "Alpha",
                                          "beta": "Beta", "electron": "Elektron"}.get(e.kind, e.kind)),
                 Column("Nuklid", lambda e: e.nuclide, lambda e: names.sort_key(e.nuclide)),
                 Column("Inhalt", lambda e: e.description),
@@ -582,9 +582,8 @@ class MainWindow(QMainWindow):
         if not self.current:
             return
         if not self.central:
-            QMessageBox.information(self, "NucDB", "Zerfallswege eigener Nuklide werden beim Anlegen des Nuklids "
-                                    "angegeben („Neues Nuklid …“ mit demselben Namen ersetzt es). Zentrale "
-                                    "Zerfallswege: Ziel „Zentrale Datenbank“ wählen.")
+            if self._require_target():
+                self._run(self.make_own_decays_dialog(), f"Eigene Zerfallswege für {self.current} gespeichert")
             return
         name = self.current
 
@@ -592,6 +591,18 @@ class MainWindow(QMainWindow):
             return self.curation.add_decay_mode(name, v.pop("daughter"), v.pop("branching"), **v)
         self._run(dialogs.DecayModeDialog(name, submit, sources=self._sources, new_source=self._new_source_cb(),
                                           parent=self), "Zerfallsweg gespeichert")
+
+    def make_own_decays_dialog(self) -> dialogs.OwnDecaysDialog:
+        """Eigene Zerfallswege (Overlay) bearbeiten; vorbelegt mit den gerade gültigen Zweigen."""
+        name = self.current
+        own = [(r.get("daughter"), r.get("branching"), r.get("mode")) for r in self.db.user.decays(name)]
+        if not own:
+            own = [(m.daughter, m.effective_branching, m.mode) for m in self.db.decay_modes(name)
+                   if not m.informational and m.daughter]
+
+        def submit(v: dict) -> Any:
+            return self.db.user.set_decays(name, v["decays"], comment=v["comment"])
+        return dialogs.OwnDecaysDialog(name, submit, current=own, parent=self)
 
     def _confirm(self, text: str) -> bool:
         return QMessageBox.question(self, "NucDB", text) == QMessageBox.StandardButton.Yes
@@ -634,8 +645,13 @@ class MainWindow(QMainWindow):
         if m is None:
             return
         if m.user:
-            QMessageBox.information(self, "NucDB", "Zerfallswege eigener Nuklide unter „Eigene Einträge“ bzw. durch "
-                                    "neues Anlegen des Nuklids ändern.")
+            if self.db.has_nuclide(m.parent) and not self.db.nuclide(m.parent).user:
+                if self._confirm(f"Eigene Zerfallswege von {m.parent} löschen? Danach gelten wieder die "
+                                 "Zweige der zentralen Datenbank."):
+                    self._guard(lambda: self.db.user.remove_decays(m.parent), "Eigene Zerfallswege gelöscht")
+            else:
+                QMessageBox.information(self, "NucDB", "Zerfallswege eigener Nuklide mit „Hinzufügen“ (Ziel "
+                                        "Ergänzungsdatenbank) ändern oder unter „Eigene Einträge“ löschen.")
             return
         self._central_removal(f"{m.parent} → {m.daughter} ({m.mode}, Quelle {m.source})",
                               lambda c: self.curation.remove_decay_mode(m.parent, m.daughter, m.mode, m.source,

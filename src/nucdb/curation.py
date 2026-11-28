@@ -194,7 +194,7 @@ def _strip_blocked_values(rec: dict, blocked: set[str]) -> dict | None:
 @dataclass
 class OverlayEntry:
     """Ein Eintrag der Ergänzungsdatenbank, wie ihn der Editor zum Übernehmen anbietet."""
-    kind: str                   # nuclide | value | gamma | alpha | beta | electron
+    kind: str                   # nuclide | value | decays | gamma | alpha | beta | electron
     nuclide: str
     description: str
     record: dict = field(repr=False)
@@ -218,6 +218,16 @@ def overlay_entries(user: UserDB, central: "NucDB") -> list[OverlayEntry]:
             for v in vals if isinstance(vals, list) else [vals]:
                 text = v.get("text") or f"{v.get('value')}"
                 out.append(OverlayEntry("value", name, f"{q} = {text}", v, quantity=q))
+    by_parent: dict[str, list[dict]] = {}
+    for rec in user._load("decay_modes"):
+        by_parent.setdefault(str(rec.get("parent")), []).append(rec)
+    for parent, recs in by_parent.items():
+        if not central.has_nuclide(parent):
+            continue                      # Zerfallswege eigener Nuklide gehören zum Nuklid-Eintrag
+        desc = "eigene Zerfallswege: " + ", ".join(
+            f"→ {r.get('daughter')} " + ("?" if r.get("branching") is None else f"{float(r['branching']):.4g}")
+            for r in recs)
+        out.append(OverlayEntry("decays", parent, desc, {"parent": parent, "modes": recs}))
     for kind, fname in schema.EMISSION_FILES.items():
         for rec in user._load(fname):
             e = rec.get("energy_kev")
@@ -233,6 +243,8 @@ def remove_overlay_entry(user: UserDB, entry: OverlayEntry, *, comment: str | No
     """Eintrag aus der Ergänzungsdatenbank löschen (eigenes Nuklid, eigener Wert oder eigene Linie)."""
     if entry.kind == "nuclide":
         user.remove_nuclide(entry.nuclide, comment=comment)
+    elif entry.kind == "decays":
+        user.remove_decays(entry.nuclide, comment=comment)
     elif entry.kind in schema.EMISSION_FILES:
         user.remove_emission(entry.kind, entry.nuclide, float(entry.record["energy_kev"]), comment=comment)
     elif entry.kind == "value":
@@ -419,7 +431,7 @@ class Curation:
         canon = names.normalize(name)
         nid = names.parse(canon)
         source = self._check_source(source)
-        curated = {str(r.get("name")) for r in _load(self.location, "nuclides") if r.get("decay_source")}
+        curated = {str(r.get("name")) for r in _load(self.location, "nuclides") if r.get("decay_source") and "z" in r}
         if self.central.has_nuclide(canon) and canon not in curated:
             raise ValueError(f"{canon} steht schon in der zentralen Datenbank. Für Korrekturen add_value() "
                              "bzw. add_decay_mode() verwenden.")
@@ -468,6 +480,46 @@ class Curation:
         self._commit(["decay_modes"], [self._log("decay_modes", f"{p} → {d}", "branching", None,
                                                  rec["branching"], source, comment)])
         return rec
+
+    def set_decays(self, parent: str, decays: Sequence[tuple], *, source: str,
+                   comment: str | None = None) -> list[dict]:
+        """Alle Zerfallswege eines Nuklids aus einer Quelle setzen und diese Quelle bevorzugen.
+
+        Schreibt die Zweige (``(Tochter, Anteil[, Art[, Unsicherheit]])``) unter ``source`` und setzt
+        ``decay_source`` des Nuklids auf diese Quelle; die Zweige anderer Quellen bleiben erhalten,
+        werden aber nicht mehr gewählt (Spezifikation 4.5).
+        """
+        p = self._canon_central(parent)
+        source = self._check_source(source)
+        if not decays:
+            raise ValueError("Keine Zerfallswege angegeben")
+        modes = []
+        for d in decays:
+            daughter, frac, *rest = d
+            dc = self._canon_central(daughter)
+            if frac is not None and not 0 <= float(frac) <= 1:
+                raise ValueError("Verzweigung als Bruchteil 0…1 angeben")
+            modes.append({"parent": p, "daughter": dc, "mode": (str(rest[0]) if rest and rest[0] else None),
+                          "branching": None if frac is None else float(frac), "source": source,
+                          "branching_unc": (float(rest[1]) if len(rest) > 1 and rest[1] is not None else None)})
+        keys = {_kj(record_key("decay_modes", m)) for m in modes}
+        self.location.mkdir(parents=True, exist_ok=True)
+        self._save("decay_modes", [r for r in _load(self.location, "decay_modes")
+                                   if not (r.get("parent") == p and r.get("source") == source)] + modes)
+        self._save(REMOVALS, [r for r in _load(self.location, REMOVALS)
+                              if not (r.get("file") == "decay_modes" and _kj(r["key"]) in keys)])
+        nucs = _load(self.location, "nuclides")
+        rec = next((r for r in nucs if r.get("name") == p), None)
+        if rec is None:
+            nucs.append({"name": p, "decay_source": source})
+        else:
+            rec["decay_source"] = source
+        self._save("nuclides", nucs)
+        desc = ", ".join(f"{m['daughter']} " + ("?" if m["branching"] is None else f"{m['branching']:g}")
+                         for m in modes)
+        self._commit(["nuclides", "decay_modes"],
+                     [self._log("decay_modes", p, "decay_source", None, desc, source, comment)])
+        return modes
 
     def remove_decay_mode(self, parent: str, daughter: str | None, mode: str | None, source: str, *,
                           comment: str) -> None:
@@ -565,6 +617,13 @@ class Curation:
                                    f"{entry.nuclide} {rec['energy_kev']:g} keV", source)
         elif entry.kind == "nuclide":
             self._adopt_nuclide(user, entry, source, comment, remove_from_overlay)
+        elif entry.kind == "decays":
+            self.set_decays(entry.nuclide, [(m.get("daughter"), m.get("branching"), m.get("mode"),
+                                             m.get("branching_unc")) for m in rec["modes"]],
+                            source=source, comment=comment)
+            if remove_from_overlay:
+                self._overlay_edit(user, "decay_modes", lambda r: r.get("parent") != entry.nuclide,
+                                   entry.nuclide, source)
         else:
             raise ValueError(f"Unbekannte Art {entry.kind!r}")
         user._db.reload()

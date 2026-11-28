@@ -323,14 +323,22 @@ class NucDB:
         return self._cache["modes"]
 
     def decay_modes(self, name: str, *, all_sources: bool = False) -> list[DecayMode]:
-        """Zerfallsarten eines Nuklids (aus seiner bevorzugten Quelle, Overlay immer dabei).
+        """Zerfallsarten eines Nuklids (aus seiner bevorzugten Quelle).
+
+        Hat das Nuklid eigene Zerfallswege im Overlay (``DecayMode.user``), ersetzen sie **alle**
+        zentralen Zweige dieses Nuklids (Spezifikation 8.3). ``all_sources=True`` liefert alles.
 
         Jede Zerfallsart trägt ``effective_branching``: den Anteil, der wirklich zu ihrer Tochter
         führt (Hauptzweig minus Teilzweige mit anderer Tochter, Spezifikation 4.6).
         """
         canon = names.normalize(name)
         items = self._modes_by_parent().get(canon, [])
-        sel = list(items) if all_sources else self._select_sources(items, self._decay_source_of(canon))
+        if all_sources:
+            sel = list(items)
+        elif any(m.user for m in items):
+            sel = [m for m in items if m.user]
+        else:
+            sel = self._select_sources(items, self._decay_source_of(canon))
         return self._apply_isomer_feeding(canon, _with_effective_branching(sel))
 
     def isomer_feedings(self, name: str) -> list[dict]:
@@ -375,7 +383,7 @@ class NucDB:
         return out
 
     def chain(self, name: str, *, min_branching: float | None = None, include_unknown: bool = True,
-              max_nuclides: int = 1000) -> Chain:
+              stable_above_s: float | None = None, max_nuclides: int = 1000) -> Chain:
         """Zerfallskette ab ``name`` bis zu den stabilen Endprodukten.
 
         ``Chain.nuclides`` ist so sortiert, dass jede Mutter vor ihren Töchtern steht.
@@ -385,6 +393,10 @@ class NucDB:
         :param min_branching: Zweige mit kleinerem effektivem Anteil weglassen, z. B. ``1e-4`` für
             eine übersichtliche Kette ohne extrem seltene Zweige (Clusterzerfälle, 2β …).
         :param include_unknown: Zweige mit unbekanntem Anteil (``?``) mitnehmen.
+        :param stable_above_s: Nuklide mit T½ ≥ diesem Wert (in s) als Endprodukt behandeln
+            („praktisch stabil“, z. B. Bi-209 mit 2·10¹⁹ a). Empfohlen: :data:`nucdb.PRACTICALLY_STABLE_S`
+            (10¹⁵ a), damit alle Tools gleich rechnen. Sie stehen in ``Chain.practically_stable``.
+            ``None`` (Standard) = nur echte stabile Nuklide beenden die Kette.
         """
         root = names.normalize(name)
         nucs = self._nuclide_map()
@@ -393,6 +405,7 @@ class NucDB:
         seen: list[str] = []
         edges: list[DecayMode] = []
         unknown: list[str] = []
+        ends: list[str] = []
         stack = [root]
         while stack:
             cur = stack.pop()
@@ -402,6 +415,9 @@ class NucDB:
             if len(seen) > max_nuclides:
                 raise RuntimeError(f"Kette ab {root} hat mehr als {max_nuclides} Nuklide")
             if nucs[cur].stable:                    # "stabil" mit nur vermuteten Zerfällen
+                continue
+            if cur != root and stable_above_s is not None and nucs[cur].practically_stable(stable_above_s):
+                ends.append(cur)
                 continue
             for m in self.decay_modes(cur):
                 if m.informational:
@@ -438,9 +454,10 @@ class NucDB:
                         ready.append(e.daughter)
         if len(order) < len(seen):  # Zyklus (sollte es physikalisch nicht geben)
             order += [n for n in seen if n not in order]
-        open_ends = [n for n in order if not nucs[n].stable and not any(e.parent == n for e in edges)]
+        open_ends = [n for n in order if not nucs[n].stable and n not in ends
+                     and not any(e.parent == n for e in edges)]
         return Chain(root=root, nuclides=tuple(order), edges=tuple(edges), unknown=tuple(unknown),
-                     open_ends=tuple(open_ends))
+                     open_ends=tuple(open_ends), practically_stable=tuple(n for n in order if n in ends))
 
     # ------------------------------------------------------------------------------------
     # Zerfallsstrahlung

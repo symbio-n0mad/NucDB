@@ -297,3 +297,19 @@ F7 (keine Benutzer), F8 (NucDB, GPL-3.0, HTML-Doku). Neue/offene Fragen siehe Ab
 - Dazu Sperre gegen gleichzeitiges Schreiben (`.lock`, `OverlayLockedError`) und
   `overlay_changed()`/`reload_if_changed()` für laufende GUIs.
 - Voll kompatibel zu 1.0 (MINOR); Tools binden künftig `@v1.1.0` ein.
+
+## 11. Spezifikation 1.2 (2026-11-26)
+
+- Rückmeldung eines Konsumenten-Tools (Migration von ICRP-107-Altdaten, 125 Nuklide geprüft, kein
+  Datenfehler; 35 Halbwertszeiten weichen um > 0,1 % von ICRP-107 ab, erwartbar).
+- Lücke: eigene Zerfallswege gingen nur für eigene Nuklide. Neu `db.user.set_decays`/`remove_decays`
+  (plus `decays`, `has_own_decays`): Overlay-Zweige ersetzen alle zentralen Zweige des Nuklids,
+  ohne Isomer-Aufteilung. Editor: Zerfall-Tab mit Ziel Overlay; Kuration übernimmt sie als Art
+  „Zerfallswege“ (`Curation.set_decays` setzt dabei `decay_source`).
+- Ketten an „praktisch stabilen“ Nukliden beenden: `chain(stable_above_s=…)`,
+  `Chain.practically_stable`, `Nuclide.practically_stable()`, Konstante `PRACTICALLY_STABLE_S`
+  = 10¹⁵ a (Bi-209 2·10¹⁹ a endet, In-115 4,4·10¹⁴ a nicht). Daten unverändert.
+- Spec 4.6a: Th-234-Beispiel Rohdaten (Pa-234 100 %) gegen effektiv (Pa-234 0,0067).
+- Nicht übernommen: Rechenrauschen bei U-238 war mit der aktuellen DB nicht nachstellbar;
+  Hinweis auf `Value.text` in INTEGRATION 3.3.
+- Voll kompatibel zu 1.1 (MINOR); Tools binden künftig `@v1.2.0` ein.

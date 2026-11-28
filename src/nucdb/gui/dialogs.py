@@ -217,7 +217,7 @@ _DECAY_LINE = re.compile(r"^\s*(\S+)\s+(.+?)(?:\s+([A-Za-z][A-Za-z0-9+\-]*))?\s*
 
 
 def parse_decays(text: str) -> list[tuple]:
-    """Zeilen „Tochter Anteil [Art]“ lesen, Anteil als Bruchteil oder in %."""
+    """Zeilen „Tochter Anteil [Art]“ lesen, Anteil als Bruchteil oder in %, ``?`` = unbekannt."""
     out = []
     for n, line in enumerate(text.splitlines(), 1):
         if not line.strip() or line.strip().startswith("#"):
@@ -225,7 +225,7 @@ def parse_decays(text: str) -> list[tuple]:
         m = _DECAY_LINE.match(line)
         if not m:
             raise ValueError(f"Zerfallsweg Zeile {n}: „Tochter Anteil [Art]“ erwartet, z. B. „Tc-99m 87,73 % B-“")
-        frac = units.parse_quantity(m.group(2), "fraction").value
+        frac = None if m.group(2).strip() == "?" else units.parse_quantity(m.group(2), "fraction").value
         out.append((m.group(1), frac, m.group(3)) if m.group(3) else (m.group(1), frac))
     return out
 
@@ -265,6 +265,29 @@ class DecayModeDialog(FormDialog, _CentralMixin):
         b = _opt(self.branching)
         return {"daughter": self.daughter.text().strip(), "mode": _opt(self.mode),
                 "branching": None if b is None else units.parse_quantity(b, "fraction").value, **self.common()}
+
+
+class OwnDecaysDialog(FormDialog):
+    """Eigene Zerfallswege eines Nuklids (Ergänzungsdatenbank); ersetzen alle zentralen Zweige."""
+
+    def __init__(self, parent_name: str, submit: Submit, *, current: list[tuple] = (), parent=None):
+        super().__init__(f"Eigene Zerfallswege von {parent_name}", submit, parent,
+                         intro="Ziel: Ergänzungsdatenbank. Eigene Zerfallswege ersetzen in allen Tools alle "
+                               "zentralen Zweige dieses Nuklids; die automatische Isomer-Aufteilung entfällt, "
+                               "Isomere also selbst angeben.")
+        self.decays = QPlainTextEdit()
+        self.decays.setPlaceholderText("je Zeile: Tochter Anteil [Art]\nTc-99m 0.8775 B-\nTc-99 12,25 % B-")
+        self.decays.setPlainText("\n".join(
+            " ".join(str(x) for x in (d, "?" if b is None else f"{b:.6g}", m) if x) for d, b, m in current))
+        self.decays.setMinimumHeight(110)
+        self.form.addRow("Zerfallswege *", self.decays)
+        self.comment = self.line("Kommentar", "z. B. Zertifikat, Messung …")
+
+    def values(self) -> dict:
+        decays = parse_decays(self.decays.toPlainText())
+        if not decays:
+            raise ValueError("Bitte mindestens einen Zerfallsweg angeben")
+        return {"decays": decays, "comment": _opt(self.comment)}
 
 
 class SourceDialog(FormDialog):

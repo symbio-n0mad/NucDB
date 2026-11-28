@@ -61,7 +61,7 @@ footer { color:var(--muted); font-size:.85rem; margin-top:3rem; }
 </div>
 </nav>
 <main><h1 id="nucdb-einbinden-anleitung-fur-die-tools">NucDB einbinden – Anleitung für die Tools</h1>
-<p><strong>Zu NucDB-Spezifikation 1.1</strong> · Stand 2026-11-24</p>
+<p><strong>Zu NucDB-Spezifikation 1.2</strong> · Stand 2026-11-26</p>
 <p>Diese Datei sagt jedem Tool, <strong>was es ändern muss</strong>, um seine Nukliddaten aus NucDB zu beziehen.
 Das Format selbst beschreibt <a href="spezifikation.html"><code>NUCDB-SPEC.md</code></a>; beide Dateien gehören zusammen.</p>
 <blockquote>
@@ -86,7 +86,7 @@ ohne weitere Einrichtung.</p>
 <tbody>
 <tr>
 <td>sobald NucDB auf GitHub veröffentlicht ist (empfohlen)</td>
-<td><code>nucdb @ git+https://github.com/symbio-n0mad/NucDB.git@v1.1.0</code></td>
+<td><code>nucdb @ git+https://github.com/symbio-n0mad/NucDB.git@v1.2.0</code></td>
 </tr>
 <tr>
 <td>bis dahin, lokal auf dem Entwicklungsrechner</td>
@@ -94,7 +94,7 @@ ohne weitere Einrichtung.</p>
 </tr>
 </tbody>
 </table>
-<p>Immer auf ein <strong>Release-Tag</strong> festlegen (<code>@v1.1.0</code>), nicht auf <code>main</code>. Ein Update auf <code>v1.x</code> ist
+<p>Immer auf ein <strong>Release-Tag</strong> festlegen (<code>@v1.2.0</code>), nicht auf <code>main</code>. Ein Update auf <code>v1.x</code> ist
 nach Spezifikation 10 ohne Codeänderung möglich.</p>
 <h3 id="12-pyinstaller-builds">1.2 PyInstaller-Builds</h3>
 <p>Die Datenbank liegt als Paketdaten in <code>nucdb/data/*.json</code>. PyInstaller nimmt sie nur mit, wenn
@@ -144,8 +144,9 @@ die Quelle des einzelnen Wertes mit ausgeben.</p>
 </ul>
 <h3 id="16-erganzungsdatenbank-overlay-richtig-nutzen">1.6 Ergänzungsdatenbank (Overlay) richtig nutzen</h3>
 <ul>
-<li>Schreiben nur über <code>db.user</code> (Spezifikation 8 und 9): eigene Nuklide, Werte und Linien
-  (<code>add_gamma</code>, <code>add_emission</code>). Das Overlay ist <strong>gemeinsam für alle Tools</strong> – vor dem Schreiben
+<li>Schreiben nur über <code>db.user</code> (Spezifikation 8 und 9): eigene Nuklide, Werte, Linien
+  (<code>add_gamma</code>, <code>add_emission</code>) und ab 1.2 eigene Zerfallswege auch für zentrale Nuklide
+  (<code>set_decays</code>; sie ersetzen alle zentralen Zweige des Nuklids, <code>DecayMode.user</code> ist dann wahr). Das Overlay ist <strong>gemeinsam für alle Tools</strong> – vor dem Schreiben
   beim Nutzer nachfragen bzw. deutlich anzeigen, was gespeichert wird.</li>
 <li><code>OverlayLockedError</code> abfangen (anderes Programm schreibt gerade): Meldung „bitte gleich noch einmal
   versuchen“.</li>
@@ -296,9 +297,17 @@ gemeinsame Ergänzungsdatenbank. Die Rechenlogik (<code>core.py</code>, <code>ch
 2. **Ketten:**</code>db.chain(start, min_branching=1e-6, include_unknown=False)<code>liefert alle Nuklide
    einer Kette in Reihenfolge Mutter vor Tochter (</code>chain.nuclides<code>) und die Zweige. Daraus die
    Zuordnung für</code>chains.py<code>bauen.</code>chain.unknown<code>(Tochter fehlt) und</code>chain.open_ends<code>(Zerfall unbekannt) als Warnung anzeigen – das entspricht der bisherigen Regel „fehlende
-   Tochter ist ein Fehler“.
+   Tochter ist ein Fehler“. Ab 1.2 mit</code>stable_above_s=nucdb.PRACTICALLY_STABLE_S<code>(10¹⁵ a):
+   Dann endet z. B. die Np-237-Kette an Bi-209 (T½ 2·10¹⁹ a) statt bei Tl-205. Die so beendeten
+   Nuklide stehen in</code>chain.practically_stable<code>und lassen sich in</code>chains.py<code>wie stabile
+   Endprodukte behandeln;</code>nuclide.practically_stable()<code>prüft dieselbe Grenze. Alle Tools
+   sollten diese Konstante verwenden, damit Ketten überall gleich enden.
 3. **Eigene Nuklide:** Die GUI speichert neue/geänderte Nuklide mit</code>db.user.add_nuclide(name, half_life="65,94 h", decays=[("Tc-99m", 0.8773), ("Tc-99", 0.1227)])<code>bzw.</code>db.user.remove_nuclide(name)<code>;</code>nuclide.user<code>zeigt „eigener Eintrag“ an. Die Töchter
    müssen existieren (stabile Endprodukte gibt es in NucDB bereits alle).
+   **Eigene Zerfallswege eines Nuklids, das in NucDB steht** (ab 1.2), z. B. die Mo-99-Verzweigung
+   aus einem Zertifikat:</code>db.user.set_decays("Mo-99", [("Tc-99m", 0.8775), ("Tc-99", 0.1225)])<code>.
+   Sie ersetzen alle zentralen Zweige dieses Nuklids, die Isomer-Aufteilung entfällt dafür (Isomere
+   selbst angeben). Zurück zu den NucDB-Zweigen mit</code>db.user.remove_decays("Mo-99")<code>;</code>db.user.has_own_decays(name)<code>bzw.</code>m.user<code>zeigt „eigene Zerfallswege“ an.
 4. **Migration:** Beim ersten Start einmalig die bisherige Nutzerdatei (</code>user_db_path()<code>bzw.</code>ACTPART_DB<code>) lesen und jedes Nuklid, das **nicht** in NucDB steht, mit</code>db.user.add_nuclide<code>übernehmen. Danach</code>ACTPART_DB<code>,</code>--db<code>,</code>user_db_path()<code>und</code>data/nuclides.json<code>entfernen.
 5. **Einheiten:** Zeiteinheiten und das Lesen von Halbwertszeiten über</code>nucdb.units<code>(</code>TIME_UNITS<code>/</code>_lookup<code>für Zeiten ersetzen). Die Dezimaltrennzeichen-Logik der GUI (</code>i18n<code>)
    kann bleiben;</code>units.parse_quantity<code>versteht Komma und Punkt.
@@ -309,6 +318,10 @@ gemeinsame Ergänzungsdatenbank. Die Rechenlogik (<code>core.py</code>, <code>ch
   (z. B. <code>db.nuclides(stable=False)</code> mit T½ ≥ 1 s).</li>
 <li>Zahlenwerte können von der bisherigen Datei abweichen (neuere Evaluationen). Tests mit festen
   Zahlen auf NucDB-Werte umstellen oder mit Toleranz prüfen.</li>
+<li>Halbwertszeiten zur Anzeige mit <code>nuclide.format_half_life()</code> ausgeben oder die
+  Originalschreibweise der Quelle aus <code>nuclide.preferred("half_life_s").text</code> nehmen
+  (z. B. „4.468E9(0.005E9) a“), nicht den in Jahre umgerechneten Wert mit allen Stellen. Ein Feld
+  <code>half_life_text</code> gibt es nur in <code>activation_gamma.json</code> (NAA).</li>
 </ul>
 <hr />
 <h2 id="4-plotrde-radonlab-radoneye">4. plotRDE / radonlab (<code>radonEYE</code>)</h2>

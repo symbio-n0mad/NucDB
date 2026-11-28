@@ -126,3 +126,19 @@ def test_adopt_overlay_entries(cur, db, dbdir):
     assert any(g.source == "TEST-B" and g.energy_kev == pytest.approx(1764.49) for g in central.gammas("Bi-214", all_sources=True))
     assert "übernommen" in (db.user.location / "changelog.json").read_text()
     assert not _errors(dbdir)
+
+
+def test_adopt_own_decays_of_central_nuclide(cur, db, dbdir):
+    db.user.set_decays("Po-218", [("Pb-214", 1.0, "A")])
+    entries = overlay_entries(db.user, cur.central)
+    assert [(e.kind, e.nuclide) for e in entries] == [("decays", "Po-218")]
+    cur.adopt(db.user, entries[0], source="TEST-B", comment="geprüft")
+    assert overlay_entries(db.user, cur.central) == []
+    central = NucDB(dbdir, overlay=False)
+    assert central.nuclide("Po-218").decay_source == "TEST-B"
+    assert [(m.daughter, m.source) for m in central.decay_modes("Po-218")] == [("Pb-214", "TEST-B")]
+    assert len(central.decay_modes("Po-218", all_sources=True)) == 3        # TEST-A bleibt erhalten
+    assert not _errors(dbdir)
+    # übersteht den Neuaufbau (erneutes Anwenden) unverändert
+    apply(cur.location, dbdir)
+    assert [m.daughter for m in NucDB(dbdir, overlay=False).decay_modes("Po-218")] == ["Pb-214"]

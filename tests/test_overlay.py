@@ -135,3 +135,50 @@ def test_reload_if_changed(db, dbdir, tmp_path):
     assert other.reload_if_changed() is True
     assert any(g.user for g in other.gammas("Co-60"))
     assert other.reload_if_changed() is False
+
+
+def test_own_decays_replace_central_branches(db, dbdir, tmp_path):
+    ch = db.chain("Rn-222")
+    assert "At-218" in ch.nuclides
+    db.user.set_decays("Po-218", [("Pb-214", 1.0, "A")], comment="eigene Auswertung")
+    modes = db.decay_modes("Po-218")
+    assert [(m.daughter, m.branching, m.user) for m in modes] == [("Pb-214", 1.0, True)]
+    assert len(db.decay_modes("Po-218", all_sources=True)) == 3
+    assert "At-218" not in db.chain("Rn-222").nuclides
+    # Andere Tools sehen es ebenfalls, die zentrale Datei bleibt unverändert
+    other = NucDB(dbdir, overlay=tmp_path / "overlay")
+    assert [m.daughter for m in other.decay_modes("Po-218")] == ["Pb-214"]
+    assert "At-218" in (dbdir / "decay_modes.json").read_text()
+    assert db.user.has_own_decays("Po-218") and not db.nuclide("Po-218").user
+    # erneut setzen ersetzt, entfernen stellt die zentralen Zweige wieder her
+    db.user.set_decays("Po-218", [("Pb-214", 0.9, "A", 0.01), ("At-218", None, "B-")])
+    assert [(m.daughter, m.branching_unc) for m in db.decay_modes("Po-218")] == [("Pb-214", 0.01), ("At-218", None)]
+    assert db.user.remove_decays("Po-218") == 2
+    assert {m.daughter for m in db.decay_modes("Po-218")} == {"Pb-214", "At-218"}
+    assert not any(m.user for m in db.decay_modes("Po-218"))
+    assert not [i for i in validate(tmp_path / "overlay", overlay=True) if i.level == "error"]
+
+
+def test_own_decays_errors(db):
+    with pytest.raises(ValueError, match="stabil"):
+        db.user.set_decays("Ni-60", [("Co-60", 1.0)])
+    with pytest.raises(ValueError, match="unbekannt"):
+        db.user.set_decays("Co-60", [("Ni-61", 1.0)])
+    with pytest.raises(ValueError, match="remove_decays"):
+        db.user.set_decays("Co-60", [])
+    with pytest.raises(ValueError, match="Bruchteil"):
+        db.user.set_decays("Co-60", [("Ni-60", 99.9)])
+    with pytest.raises(ValueError, match="keine eigenen"):
+        db.user.remove_decays("Co-60")
+    with pytest.raises(ValueError, match="Unbekanntes"):
+        db.user.set_decays("Sr-90", [("Ni-60", 1.0)])
+
+
+def test_own_decays_skip_isomer_feeding(tmp_path):
+    """Grunddatenbank: Mo-99 wird sonst automatisch auf Tc-99m/Tc-99 aufgeteilt."""
+    db = NucDB(overlay=tmp_path / "ov")
+    assert any(m.fields.get("isomer_feeding") for m in db.decay_modes("Mo-99"))
+    db.user.set_decays("Mo-99", [("Tc-99m", 0.8775, "B-"), ("Tc-99", 0.1225, "B-")], comment="Zertifikat")
+    modes = db.decay_modes("Mo-99")
+    assert sorted((m.daughter, m.effective_branching) for m in modes) == [("Tc-99", 0.1225), ("Tc-99m", 0.8775)]
+    assert all(m.user for m in modes)

@@ -76,3 +76,21 @@ def test_parse_decays():
                                                                 ("Tc-99", pytest.approx(0.1227))]
     with pytest.raises(ValueError):
         parse_decays("nur-ein-feld")
+
+
+def test_own_decays_via_dialog(win, db):
+    win.target.setCurrentIndex(0)                            # Ziel: Overlay
+    assert not win.central
+    win.select_nuclide("Po-218")
+    d = win.make_own_decays_dialog()
+    assert "Pb-214" in d.decays.toPlainText() and "At-218" in d.decays.toPlainText()
+    d.decays.setPlainText("Pb-214 100 % A")
+    assert d.try_accept()
+    win._after_write("ok")
+    assert [(m.daughter, m.user) for m in db.decay_modes("Po-218")] == [("Pb-214", True)]
+    assert [e.kind for e in win.ov_model.rows] == ["decays"]
+    assert win.dec_model.rowCount() == 1
+
+
+def test_parse_decays_unknown_fraction():
+    assert parse_decays("At-218 ? B-") == [("At-218", None, "B-")]

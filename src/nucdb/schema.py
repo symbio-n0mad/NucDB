@@ -8,7 +8,7 @@ from typing import Callable
 from . import names
 
 #: Version des Datenformats (= Version der Spezifikation `docs/NUCDB-SPEC.md`).
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 
 
 def parse_version(v: str) -> tuple[int, int, int]:

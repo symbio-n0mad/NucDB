@@ -1,6 +1,6 @@
 # NucDB – Spezifikation der Nukliddatenbank
 
-**Version der Spezifikation: 1.1** · Stand 2026-11-24 · umgesetzt in `nucdb` 1.1
+**Version der Spezifikation: 1.2** · Stand 2026-11-26 · umgesetzt in `nucdb` 1.2
 Projekt: NucDB (`github.com/symbio-n0mad/NucDB`) · Daten: CC BY 4.0 · Code: GPL-3.0-or-later
 
 Dieses Dokument richtet sich an **Konsumenten** der Datenbank: plotSPE, plotRDE/radonlab,
@@ -98,7 +98,7 @@ In flachen Datensätzen (Linien, Zerfallsarten) heißen die Begleitfelder `<feld
 Jede Datei hat diesen Aufbau:
 
 ```json
-{"format": "nucdb/<dateiname>", "schema_version": "1.1.0",
+{"format": "nucdb/<dateiname>", "schema_version": "1.2.0",
  "records": [
 {"...": "ein Datensatz pro Zeile"},
 {"...": "..."}
@@ -133,7 +133,7 @@ Jede Datei hat diesen Aufbau:
 ### 4.1 `manifest.json`
 
 ```json
-{"format": "nucdb/manifest", "schema_version": "1.1.0", "data_version": "2026.11.0",
+{"format": "nucdb/manifest", "schema_version": "1.2.0", "data_version": "2026.11.0",
  "created_at": "2026-11-20T12:00:00Z", "license": "CC-BY-4.0",
  "import": {"min_intensity": 0.001, "min_intensity_sources": ["ENSDF-LiveChart"], "min_half_life_s": 1},
  "source_priority": ["DDEP", "ENSDF-LiveChart", "NUBASE2020", "AME2020"],
@@ -261,6 +261,11 @@ zum Grundzustand wird um `fraction` verkleinert, und ein zusätzlicher Zweig zum
 `decay_modes()` also B- → Tc-99m 0,878 und B- → Tc-99 0,122. Bei eigenen Zerfallswegen aus dem
 Overlay wird nichts aufgeteilt. Wer die Dateien ohne `nucdb` liest, muss diese Aufteilung selbst
 vornehmen.
+
+Die Rohdaten in `decay_modes.json` sehen deshalb anders aus als das Ergebnis von `decay_modes()`.
+Beispiel Th-234: DDEP nennt β⁻ → Pa-234 mit `branching` 1,0 (100 %). Nach der Aufteilung liefert
+`decay_modes()` β⁻ → Pa-234m mit `effective_branching` 0,9933 und β⁻ → Pa-234 mit nur noch 0,0067.
+Für Aktivitäts- und Kettenrechnungen immer `effective_branching` verwenden.
 
 ### 4.7 Zerfallsstrahlung (`decay_*.json`)
 
@@ -458,11 +463,15 @@ co.decay_constant(unit="1/h")
 - Die API legt das Overlay **über** die zentrale Datenbank:
   - neue Nuklide und Linien kommen hinzu,
   - zusätzliche Werte bekannter Nuklide werden angehängt,
-  - ein Overlay-Wert mit `preferred: true` übersteuert den zentralen Wert.
+  - ein Overlay-Wert mit `preferred: true` übersteuert den zentralen Wert,
+  - **eigene Zerfallswege** (Overlay-`decay_modes.json` mit diesem `parent`) ersetzen **alle**
+    zentralen Zweige dieses Nuklids, auch bei zentralen Nukliden (seit 1.2). Für dieses Nuklid
+    entfällt die Isomer-Aufteilung aus 4.6a, Isomere also selbst angeben. Mit
+    `decay_modes(name, all_sources=True)` sind die zentralen Zweige weiter abrufbar.
 - Alle Tools sehen dasselbe Overlay. Ein Nuklid, das in ActivityPartitioner angelegt wird, ist
   also auch in plotSPE sichtbar.
 - Overlay-Einträge sind in der API und der Oberfläche als „eigener Eintrag“ erkennbar
-  (`nuclide.user`, `value.user`, `line.user`).
+  (`nuclide.user`, `value.user`, `line.user`, `decay_mode.user`).
 - Der Editor kann Overlay-Einträge prüfen und in die zentrale Datenbank übernehmen.
 
 **Schreiben** (nur über `db.user`, Abschnitt 9):
@@ -471,6 +480,7 @@ co.decay_constant(unit="1/h")
 |---|---|
 | `add_nuclide`, `remove_nuclide` | eigenes Nuklid samt Zerfallswegen (`nuclides.json`, `decay_modes.json`) |
 | `add_value` | eigener Wert einer Größe, z. B. Halbwertszeit (`nuclides.json`) |
+| `set_decays`, `remove_decays` | eigene Zerfallswege eines zentralen oder eigenen Nuklids, ersetzen dessen zentrale Zweige (`decay_modes.json`, seit 1.2) |
 | `add_gamma`, `remove_gamma` | eigene Gamma-/Röntgenlinie (`decay_gamma.json`), z. B. ein in plotSPE gefundener Peak |
 | `add_emission`, `remove_emission` | eigene Linie bzw. eigener Zweig jeder Strahlungsart (`decay_gamma/alpha/beta/electron.json`) |
 
@@ -493,7 +503,7 @@ Die API hat keine GUI-Abhängigkeiten und kommt nur mit der Standardbibliothek a
 erst beim ersten Zugriff geladen. Pro Datei gibt es einen Index nach Nuklid und Energie.
 
 ```python
-from nucdb import NucDB
+from nucdb import NucDB, PRACTICALLY_STABLE_S
 db = NucDB()                                   # Fundort nach Abschnitt 2, oder NucDB(path)
 co = db.nuclide("60Co")                        # Nuclide(name="Co-60", z=27, a=60, isomer=0, …)
 co.half_life_s, co.half_life("a"), co.decay_constant("1/h")
@@ -508,12 +518,17 @@ db.find_prompt_gammas(2223.2, tol_kev=1.0)
 db.activation_gammas(element="Al")             # NAA-Daten (nur lokale Datenbanken, sonst leer)
 db.chain("Rn-222")                             # Kette mit Verzweigungen bis zu stabilen Nukliden
 db.chain("Th-232", min_branching=1e-6, include_unknown=False)   # ohne extrem seltene/unbekannte Zweige
+db.chain("Np-237", stable_above_s=PRACTICALLY_STABLE_S)  # endet an Bi-209 (T½ ≥ 10¹⁵ a), seit 1.2
+db.nuclide("Bi-209").practically_stable()       # True: stabil oder T½ ≥ PRACTICALLY_STABLE_S (seit 1.2)
 [m.effective_branching for m in db.decay_modes("Bi-212")]
 db.decay_modes("Mo-99")                        # B- → Tc-99m 0.878 und B- → Tc-99 0.122 (Isomer-Fütterung)
 db.isomer_feedings("Mo-99")                    # Rohdaten der Fütterung
 db.source("NUBASE2020").citation
 db.user.add_nuclide("Mo-99", half_life="65,94 h", decays=[("Tc-99m", 0.8773), ("Tc-99", 0.1227)])
+                                               # ↑ nur für Nuklide, die nicht in der zentralen DB stehen
 db.user.add_value("Co-60", "half_life_s", "1925.3(3) d")   # eigener Wert, übersteuert zentral
+db.user.set_decays("Mo-99", [("Tc-99m", 0.8775, "B-"), ("Tc-99", 0.1225, "B-")], comment="Zertifikat")
+db.user.decays("Mo-99"); db.user.remove_decays("Mo-99")   # eigene Zweige lesen bzw. zurück zu zentral
 db.user.remove_nuclide("Mo-99")
 db.user.add_gamma("Bi-214", "1764.49(3) keV", intensity="15,3 %", note="eigene Messung")   # eigener Peak
 db.user.remove_gamma("Bi-214", 1764.49)
@@ -525,7 +540,8 @@ db.location, db.data_version, db.schema_version      # welche Datenbank geladen 
 
 Weitere Funktionen: `db.nuclides(z=, a=, stable=)`, `db.has_nuclide()`, `db.element()`,
 `db.elements()`, `db.sources()`, `db.quantities()`, `db.special_lines(kind)`, `db.emissions(kind, name)`,
-`db.reload()`; Module `nucdb.names` (Namen lesen/normalisieren), `nucdb.units`, `nucdb.physics`
+`db.reload()`; seit 1.2 `Chain.practically_stable` (Endpunkte wegen `stable_above_s`, diese stehen
+nicht in `open_ends`) und `db.user.has_own_decays(name)`; Module `nucdb.names` (Namen lesen/normalisieren), `nucdb.units`, `nucdb.physics`
 (`compton_edge`, `backscatter`, `single_escape`, `double_escape`, Konstanten).
 Fehlerklassen: `UnknownNuclideError` (Unterklasse von `KeyError`), `NuclideNameError` (`ValueError`),
 `units.UnitError` (`ValueError`), `IncompatibleSchemaError`, `OverlayLockedError` (Overlay gerade
@@ -565,3 +581,4 @@ gleichwertiger Treffer der Peak-Suche und die Gewichte ihrer Bewertung.
 | 0.8 | 2026-11-24 | `activation_gamma.json` (NAA), Quellenfelder je Wertgruppe in `elements.json`, lokale Datenbanken und `validate --distributable` (4.11), Größe `g_factor_westcott` |
 | 1.0 | 2026-11-24 | Festgeschrieben. Neu: `isomer_feeding.json` (4.6a) mit automatischer Aufteilung der Zweige. Aufgeräumt: NAA-Felder nur in `activation_gamma.json`, Begleitfelder (`_unc`/`unc`) erklärt, Zusagen (Abschnitt 10), Verweis auf `NUCDB-INTEGRATION.md` |
 | 1.1 | 2026-11-24 | Eigene Linien im Overlay schreiben (`add_gamma`, `add_emission`, `remove_*`, `emissions`), Sperre gegen gleichzeitiges Schreiben (`OverlayLockedError`), `overlay_changed()`/`reload_if_changed()`. Format unverändert, voll kompatibel zu 1.0 |
+| 1.2 | 2026-11-26 | Nach Rückmeldung eines Konsumenten: eigene Zerfallswege auch für zentrale Nuklide (`db.user.set_decays`/`remove_decays`/`decays`/`has_own_decays`), sie ersetzen alle zentralen Zweige des Nuklids (8). Ketten an „praktisch stabilen“ Nukliden beenden: `chain(stable_above_s=…)`, `Chain.practically_stable`, `Nuclide.practically_stable()`, Konstante `PRACTICALLY_STABLE_S` (10¹⁵ a). Th-234-Beispiel in 4.6a. Format unverändert, voll kompatibel zu 1.1 |

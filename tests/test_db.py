@@ -166,3 +166,25 @@ def test_find_gammas_ranking_and_filters(db):
     assert not db.find_gammas(609.3, 1.0, min_half_life_s=86400, include_special=False)  # Bi-214 zu kurzlebig
     by_delta = db.find_gammas(1332.5, tol_kev=1.0, sort="delta")
     assert abs(by_delta[0].delta_kev) <= abs(by_delta[-1].delta_kev)
+
+
+def test_chain_practically_stable(db):
+    from nucdb import PRACTICALLY_STABLE_S, units
+    ch = db.chain("99mTc", stable_above_s=1e5 * units.YEAR_S)       # Tc-99: 2,1·10⁵ a
+    assert ch.nuclides == ("Tc-99m", "Tc-99")
+    assert ch.practically_stable == ("Tc-99",) and ch.open_ends == ()
+    assert db.chain("99mTc").practically_stable == ()
+    assert db.nuclide("Tc-99").practically_stable(1e5 * units.YEAR_S)
+    assert not db.nuclide("Tc-99").practically_stable()
+    assert db.nuclide("Ni-60").practically_stable() and PRACTICALLY_STABLE_S > 3e22
+    # Die Mutter selbst wird immer verfolgt
+    assert db.chain("Tc-99", stable_above_s=1.0).practically_stable == ()
+
+
+def test_chain_np237_ends_at_bi209_in_package_db():
+    from nucdb import PRACTICALLY_STABLE_S
+    db = NucDB(overlay=False)
+    assert db.chain("Np-237").nuclides[-1] == "Tl-205"
+    ch = db.chain("Np-237", stable_above_s=PRACTICALLY_STABLE_S)
+    assert ch.practically_stable == ("Bi-209",) and not ch.daughters("Bi-209")
+    assert db.nuclide("Bi-209").half_life_s < float("inf")             # Daten bleiben unverändert

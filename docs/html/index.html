@@ -75,7 +75,7 @@ footer { color:var(--muted); font-size:.85rem; margin-top:3rem; }
 </div>
 </nav>
 <main><h1 id="nucdb-spezifikation-der-nukliddatenbank">NucDB – Spezifikation der Nukliddatenbank</h1>
-<p><strong>Version der Spezifikation: 1.1</strong> · Stand 2026-11-24 · umgesetzt in <code>nucdb</code> 1.1
+<p><strong>Version der Spezifikation: 1.2</strong> · Stand 2026-11-26 · umgesetzt in <code>nucdb</code> 1.2
 Projekt: NucDB (<code>github.com/symbio-n0mad/NucDB</code>) · Daten: CC BY 4.0 · Code: GPL-3.0-or-later</p>
 <p>Dieses Dokument richtet sich an <strong>Konsumenten</strong> der Datenbank: plotSPE, plotRDE/radonlab,
 ActivityPartitioner, das geplante LSC-Tool und NucOffice. Es kann in diesen Projekten direkt als
@@ -197,7 +197,7 @@ Th-232-Kette gebildet, das steckt nicht in seinen Linienintensitäten.</p>
 </ul>
 <h3 id="34-dateiaufbau">3.4 Dateiaufbau</h3>
 <p>Jede Datei hat diesen Aufbau:</p>
-<pre><code class="language-json">{&quot;format&quot;: &quot;nucdb/&lt;dateiname&gt;&quot;, &quot;schema_version&quot;: &quot;1.1.0&quot;,
+<pre><code class="language-json">{&quot;format&quot;: &quot;nucdb/&lt;dateiname&gt;&quot;, &quot;schema_version&quot;: &quot;1.2.0&quot;,
  &quot;records&quot;: [
 {&quot;...&quot;: &quot;ein Datensatz pro Zeile&quot;},
 {&quot;...&quot;: &quot;...&quot;}
@@ -297,7 +297,7 @@ Th-232-Kette gebildet, das steckt nicht in seinen Linienintensitäten.</p>
 </tbody>
 </table>
 <h3 id="41-manifestjson">4.1 <code>manifest.json</code></h3>
-<pre><code class="language-json">{&quot;format&quot;: &quot;nucdb/manifest&quot;, &quot;schema_version&quot;: &quot;1.1.0&quot;, &quot;data_version&quot;: &quot;2026.11.0&quot;,
+<pre><code class="language-json">{&quot;format&quot;: &quot;nucdb/manifest&quot;, &quot;schema_version&quot;: &quot;1.2.0&quot;, &quot;data_version&quot;: &quot;2026.11.0&quot;,
  &quot;created_at&quot;: &quot;2026-11-20T12:00:00Z&quot;, &quot;license&quot;: &quot;CC-BY-4.0&quot;,
  &quot;import&quot;: {&quot;min_intensity&quot;: 0.001, &quot;min_intensity_sources&quot;: [&quot;ENSDF-LiveChart&quot;], &quot;min_half_life_s&quot;: 1},
  &quot;source_priority&quot;: [&quot;DDEP&quot;, &quot;ENSDF-LiveChart&quot;, &quot;NUBASE2020&quot;, &quot;AME2020&quot;],
@@ -462,6 +462,10 @@ zum Grundzustand wird um <code>fraction</code> verkleinert, und ein zusätzliche
 <code>decay_modes()</code> also B- → Tc-99m 0,878 und B- → Tc-99 0,122. Bei eigenen Zerfallswegen aus dem
 Overlay wird nichts aufgeteilt. Wer die Dateien ohne <code>nucdb</code> liest, muss diese Aufteilung selbst
 vornehmen.</p>
+<p>Die Rohdaten in <code>decay_modes.json</code> sehen deshalb anders aus als das Ergebnis von <code>decay_modes()</code>.
+Beispiel Th-234: DDEP nennt β⁻ → Pa-234 mit <code>branching</code> 1,0 (100 %). Nach der Aufteilung liefert
+<code>decay_modes()</code> β⁻ → Pa-234m mit <code>effective_branching</code> 0,9933 und β⁻ → Pa-234 mit nur noch 0,0067.
+Für Aktivitäts- und Kettenrechnungen immer <code>effective_branching</code> verwenden.</p>
 <h3 id="47-zerfallsstrahlung-decay_json">4.7 Zerfallsstrahlung (<code>decay_*.json</code>)</h3>
 <p>Gemeinsame Felder: <code>nuclide</code> (das <strong>zerfallende</strong> Nuklid), <code>energy_kev</code>, <code>energy_kev_unc</code>,
 <code>intensity</code>, <code>intensity_unc</code> (pro Zerfall), <code>source</code>, sowie optional <code>_flag</code>-Felder.</p>
@@ -744,11 +748,15 @@ co.decay_constant(unit=&quot;1/h&quot;)
 <li>Die API legt das Overlay <strong>über</strong> die zentrale Datenbank:</li>
 <li>neue Nuklide und Linien kommen hinzu,</li>
 <li>zusätzliche Werte bekannter Nuklide werden angehängt,</li>
-<li>ein Overlay-Wert mit <code>preferred: true</code> übersteuert den zentralen Wert.</li>
+<li>ein Overlay-Wert mit <code>preferred: true</code> übersteuert den zentralen Wert,</li>
+<li><strong>eigene Zerfallswege</strong> (Overlay-<code>decay_modes.json</code> mit diesem <code>parent</code>) ersetzen <strong>alle</strong>
+    zentralen Zweige dieses Nuklids, auch bei zentralen Nukliden (seit 1.2). Für dieses Nuklid
+    entfällt die Isomer-Aufteilung aus 4.6a, Isomere also selbst angeben. Mit
+    <code>decay_modes(name, all_sources=True)</code> sind die zentralen Zweige weiter abrufbar.</li>
 <li>Alle Tools sehen dasselbe Overlay. Ein Nuklid, das in ActivityPartitioner angelegt wird, ist
   also auch in plotSPE sichtbar.</li>
 <li>Overlay-Einträge sind in der API und der Oberfläche als „eigener Eintrag“ erkennbar
-  (<code>nuclide.user</code>, <code>value.user</code>, <code>line.user</code>).</li>
+  (<code>nuclide.user</code>, <code>value.user</code>, <code>line.user</code>, <code>decay_mode.user</code>).</li>
 <li>Der Editor kann Overlay-Einträge prüfen und in die zentrale Datenbank übernehmen.</li>
 </ul>
 <p><strong>Schreiben</strong> (nur über <code>db.user</code>, Abschnitt 9):</p>
@@ -767,6 +775,10 @@ co.decay_constant(unit=&quot;1/h&quot;)
 <tr>
 <td><code>add_value</code></td>
 <td>eigener Wert einer Größe, z. B. Halbwertszeit (<code>nuclides.json</code>)</td>
+</tr>
+<tr>
+<td><code>set_decays</code>, <code>remove_decays</code></td>
+<td>eigene Zerfallswege eines zentralen oder eigenen Nuklids, ersetzen dessen zentrale Zweige (<code>decay_modes.json</code>, seit 1.2)</td>
 </tr>
 <tr>
 <td><code>add_gamma</code>, <code>remove_gamma</code></td>
@@ -791,7 +803,7 @@ Dateien) und lädt nur bei Bedarf neu – z. B. beim Fokuswechsel des Fensters a
 <h2 id="9-python-lese-api-paket-nucdb">9. Python-Lese-API (Paket <code>nucdb</code>)</h2>
 <p>Die API hat keine GUI-Abhängigkeiten und kommt nur mit der Standardbibliothek aus. Dateien werden
 erst beim ersten Zugriff geladen. Pro Datei gibt es einen Index nach Nuklid und Energie.</p>
-<pre><code class="language-python">from nucdb import NucDB
+<pre><code class="language-python">from nucdb import NucDB, PRACTICALLY_STABLE_S
 db = NucDB()                                   # Fundort nach Abschnitt 2, oder NucDB(path)
 co = db.nuclide(&quot;60Co&quot;)                        # Nuclide(name=&quot;Co-60&quot;, z=27, a=60, isomer=0, …)
 co.half_life_s, co.half_life(&quot;a&quot;), co.decay_constant(&quot;1/h&quot;)
@@ -806,12 +818,17 @@ db.find_prompt_gammas(2223.2, tol_kev=1.0)
 db.activation_gammas(element=&quot;Al&quot;)             # NAA-Daten (nur lokale Datenbanken, sonst leer)
 db.chain(&quot;Rn-222&quot;)                             # Kette mit Verzweigungen bis zu stabilen Nukliden
 db.chain(&quot;Th-232&quot;, min_branching=1e-6, include_unknown=False)   # ohne extrem seltene/unbekannte Zweige
+db.chain(&quot;Np-237&quot;, stable_above_s=PRACTICALLY_STABLE_S)  # endet an Bi-209 (T½ ≥ 10¹⁵ a), seit 1.2
+db.nuclide(&quot;Bi-209&quot;).practically_stable()       # True: stabil oder T½ ≥ PRACTICALLY_STABLE_S (seit 1.2)
 [m.effective_branching for m in db.decay_modes(&quot;Bi-212&quot;)]
 db.decay_modes(&quot;Mo-99&quot;)                        # B- → Tc-99m 0.878 und B- → Tc-99 0.122 (Isomer-Fütterung)
 db.isomer_feedings(&quot;Mo-99&quot;)                    # Rohdaten der Fütterung
 db.source(&quot;NUBASE2020&quot;).citation
 db.user.add_nuclide(&quot;Mo-99&quot;, half_life=&quot;65,94 h&quot;, decays=[(&quot;Tc-99m&quot;, 0.8773), (&quot;Tc-99&quot;, 0.1227)])
+                                               # ↑ nur für Nuklide, die nicht in der zentralen DB stehen
 db.user.add_value(&quot;Co-60&quot;, &quot;half_life_s&quot;, &quot;1925.3(3) d&quot;)   # eigener Wert, übersteuert zentral
+db.user.set_decays(&quot;Mo-99&quot;, [(&quot;Tc-99m&quot;, 0.8775, &quot;B-&quot;), (&quot;Tc-99&quot;, 0.1225, &quot;B-&quot;)], comment=&quot;Zertifikat&quot;)
+db.user.decays(&quot;Mo-99&quot;); db.user.remove_decays(&quot;Mo-99&quot;)   # eigene Zweige lesen bzw. zurück zu zentral
 db.user.remove_nuclide(&quot;Mo-99&quot;)
 db.user.add_gamma(&quot;Bi-214&quot;, &quot;1764.49(3) keV&quot;, intensity=&quot;15,3 %&quot;, note=&quot;eigene Messung&quot;)   # eigener Peak
 db.user.remove_gamma(&quot;Bi-214&quot;, 1764.49)
@@ -822,7 +839,8 @@ db.location, db.data_version, db.schema_version      # welche Datenbank geladen 
 </code></pre>
 <p>Weitere Funktionen: <code>db.nuclides(z=, a=, stable=)</code>, <code>db.has_nuclide()</code>, <code>db.element()</code>,
 <code>db.elements()</code>, <code>db.sources()</code>, <code>db.quantities()</code>, <code>db.special_lines(kind)</code>, <code>db.emissions(kind, name)</code>,
-<code>db.reload()</code>; Module <code>nucdb.names</code> (Namen lesen/normalisieren), <code>nucdb.units</code>, <code>nucdb.physics</code>
+<code>db.reload()</code>; seit 1.2 <code>Chain.practically_stable</code> (Endpunkte wegen <code>stable_above_s</code>, diese stehen
+nicht in <code>open_ends</code>) und <code>db.user.has_own_decays(name)</code>; Module <code>nucdb.names</code> (Namen lesen/normalisieren), <code>nucdb.units</code>, <code>nucdb.physics</code>
 (<code>compton_edge</code>, <code>backscatter</code>, <code>single_escape</code>, <code>double_escape</code>, Konstanten).
 Fehlerklassen: <code>UnknownNuclideError</code> (Unterklasse von <code>KeyError</code>), <code>NuclideNameError</code> (<code>ValueError</code>),
 <code>units.UnitError</code> (<code>ValueError</code>), <code>IncompatibleSchemaError</code>, <code>OverlayLockedError</code> (Overlay gerade
@@ -903,6 +921,11 @@ gleichwertiger Treffer der Peak-Suche und die Gewichte ihrer Bewertung.</p>
 <td>1.1</td>
 <td>2026-11-24</td>
 <td>Eigene Linien im Overlay schreiben (<code>add_gamma</code>, <code>add_emission</code>, <code>remove_*</code>, <code>emissions</code>), Sperre gegen gleichzeitiges Schreiben (<code>OverlayLockedError</code>), <code>overlay_changed()</code>/<code>reload_if_changed()</code>. Format unverändert, voll kompatibel zu 1.0</td>
+</tr>
+<tr>
+<td>1.2</td>
+<td>2026-11-26</td>
+<td>Nach Rückmeldung eines Konsumenten: eigene Zerfallswege auch für zentrale Nuklide (<code>db.user.set_decays</code>/<code>remove_decays</code>/<code>decays</code>/<code>has_own_decays</code>), sie ersetzen alle zentralen Zweige des Nuklids (8). Ketten an „praktisch stabilen“ Nukliden beenden: <code>chain(stable_above_s=…)</code>, <code>Chain.practically_stable</code>, <code>Nuclide.practically_stable()</code>, Konstante <code>PRACTICALLY_STABLE_S</code> (10¹⁵ a). Th-234-Beispiel in 4.6a. Format unverändert, voll kompatibel zu 1.1</td>
 </tr>
 </tbody>
 </table><footer>Erzeugt aus <code>docs/NUCDB-SPEC.md</code> mit <code>tools/build_docs.py</code>.</footer></main>
